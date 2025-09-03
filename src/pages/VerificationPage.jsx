@@ -35,7 +35,7 @@ const VerificationPage = () => {
                 }
 
                 try {
-                    const { data } = await api.get(`http://localhost:5001/api/users/verify/${token}`);
+                    const { data } = await api.get(`/api/users/verify/${token}`);
                     setStatus(data.message);
                     setError(false);
                 } catch (err) {
