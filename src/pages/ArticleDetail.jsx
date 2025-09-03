@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios.js';
 
 const ArticleDetailPage = () => {
     const [article, setArticle] = useState(null);
@@ -10,7 +10,7 @@ const ArticleDetailPage = () => {
     useEffect(() => {
         const fetchArticle = async () => {
             try {
-                const { data } = await axios.get(`http://localhost:5001/api/articles/${id}`);
+                const { data } = await api.get(`/api/articles/${id}`);
                 setArticle(data);
             } catch (error) {
                 console.error("Failed to fetch article", error);

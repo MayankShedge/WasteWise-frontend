@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios.js';
 
 // --- Helper Components for Icons ---
 
@@ -35,7 +35,7 @@ const VerificationPage = () => {
                 }
 
                 try {
-                    const { data } = await axios.get(`http://localhost:5001/api/users/verify/${token}`);
+                    const { data } = await api.get(`http://localhost:5001/api/users/verify/${token}`);
                     setStatus(data.message);
                     setError(false);
                 } catch (err) {

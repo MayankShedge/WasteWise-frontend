@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -55,7 +55,7 @@ const ReportIssuePage = () => {
                         },
                     };
 
-                    await axios.post('http://localhost:5001/api/reports', formData, config);
+                    await api.post('/api/reports', formData, config);
                     setSuccess('Report submitted successfully! Thank you for your contribution.');
                     setTimeout(() => navigate('/'), 3000);
                 } catch (err) {

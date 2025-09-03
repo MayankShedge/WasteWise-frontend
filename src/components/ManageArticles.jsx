@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
 
 const ManageArticles = () => {
@@ -13,7 +13,7 @@ const ManageArticles = () => {
 
     const fetchArticles = useCallback(async () => {
         try {
-            const { data } = await axios.get('http://localhost:5001/api/articles');
+            const { data } = await api.get('/api/articles');
             setArticles(data);
         } catch (err) {
             setError('Failed to load articles.');
@@ -30,7 +30,7 @@ const ManageArticles = () => {
         if (window.confirm('Are you sure you want to delete this article?')) {
             try {
                 const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-                await axios.delete(`http://localhost:5001/api/articles/${id}`, config);
+                await api.delete(`/api/articles/${id}`, config);
                 fetchArticles();
             } catch (err) {
                 alert('Failed to delete article.');
@@ -57,7 +57,7 @@ const ManageArticles = () => {
                     Authorization: `Bearer ${userInfo.token}`,
                 },
             };
-            await axios.post('http://localhost:5001/api/articles', formData, config);
+            await api.post('/api/articles', formData, config);
             // Reset form and refetch articles
             setTitle('');
             setContent('');

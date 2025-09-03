@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios.js';
 
 // A reusable component for displaying a list of items
 const WasteCategoryCard = ({ title, items, binColor, bgColor, borderColor }) => (
@@ -24,7 +24,7 @@ const GuidePage = () => {
   useEffect(() => {
     const fetchGuideData = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5001/api/guide');
+        const { data } = await api.get('/api/guide');
         setGuideData(data);
       } catch (err) {
         setError('Failed to load the guide. Please try again later.');

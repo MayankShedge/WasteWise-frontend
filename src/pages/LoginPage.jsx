@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
 
 const LoginPage = () => {
@@ -18,7 +18,7 @@ const LoginPage = () => {
         setError('');
 
         try {
-            const { data } = await axios.post('http://localhost:5001/api/users/login', { email, password });
+            const { data } = await api.post('/api/users/login', { email, password });
             login(data); // Update context with user data
             navigate('/'); // Redirect to homepage on successful login
         } catch (err) {

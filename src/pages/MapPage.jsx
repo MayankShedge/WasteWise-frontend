@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios.js';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -51,7 +51,7 @@ const MapPage = () => {
     useEffect(() => {
         const fetchLocations = async () => {
             try {
-                const { data } = await axios.get('http://localhost:5001/api/locations');
+                const { data } = await api.get('/api/locations');
                 setLocations(data);
             } catch (err) {
                 setError('Failed to load disposal locations. Please try again later.');

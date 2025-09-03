@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
 import { Bar, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
@@ -15,7 +15,7 @@ const AdminAnalyticsPage = () => {
         const fetchStats = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-                const { data } = await axios.get('http://localhost:5001/api/stats', config);
+                const { data } = await api.get('/api/stats', config);
                 setStats(data);
             } catch (error) {
                 console.error("Failed to fetch stats", error);

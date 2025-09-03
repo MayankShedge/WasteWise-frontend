@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
 
 // Import TensorFlow.js and the MobileNet model
@@ -84,9 +84,9 @@ const ScannerPage = () => {
             if (finalResult && userInfo) {
                 const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
                 try {
-                    const { data: updatedUser } = await axios.post('http://localhost:5001/api/users/add-points', {}, config);
+                    const { data: updatedUser } = await api.post('/api/users/add-points', {}, config);
                     updateUser(updatedUser); 
-                    await axios.post('http://localhost:5001/api/history', { 
+                    await api.post('/api/history', { 
                         item: finalResult.item, 
                         category: finalResult.category 
                     }, config);

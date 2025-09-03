@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
 
 const ManageReports = () => {
@@ -13,7 +13,7 @@ const ManageReports = () => {
         if (!userInfo) return;
         try {
             const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-            const { data } = await axios.get('http://localhost:5001/api/reports', config);
+            const { data } = await api.get('/api/reports', config);
             setReports(data);
         } catch (err) { // --- THE '_blank' HAS BEEN REMOVED FROM THIS LINE ---
             setError('Failed to load reports.');
@@ -30,7 +30,7 @@ const ManageReports = () => {
         if (window.confirm('Are you sure you want to delete this report?')) {
             try {
                 const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-                await axios.delete(`http://localhost:5001/api/reports/${reportId}`, config);
+                await api.delete(`/api/reports/${reportId}`, config);
                 fetchReports();
             } catch (err) {
                 alert('Failed to delete report.');
@@ -41,7 +41,7 @@ const ManageReports = () => {
     const handleStatusChange = async (reportId, newStatus) => {
         try {
             const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-            await axios.put(`http://localhost:5001/api/reports/${reportId}`, { status: newStatus }, config);
+            await api.put(`/api/reports/${reportId}`, { status: newStatus }, config);
             setReports(reports.map(r => r._id === reportId ? { ...r, status: newStatus } : r));
         } catch (err) {
             alert('Failed to update status.');
@@ -52,7 +52,7 @@ const ManageReports = () => {
         setEmailStatus('Sending...');
         try {
             const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-            const { data } = await axios.post('http://localhost:5001/api/reports/email-summary', {}, config);
+            const { data } = await api.post('/api/reports/email-summary', {}, config);
             setEmailStatus(data.message);
         } catch (err) {
             setEmailStatus(err.response?.data?.message || 'Failed to send report.');

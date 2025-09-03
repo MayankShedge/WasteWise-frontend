@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
 
 const EditSchedule = () => {
@@ -12,7 +12,7 @@ const EditSchedule = () => {
     const fetchSchedules = useCallback(async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get('http://localhost:5001/api/schedules');
+            const { data } = await api.get('/api/schedules');
             setSchedules(data);
         } catch (err) {
             setError('Failed to load schedules.');
@@ -36,7 +36,7 @@ const EditSchedule = () => {
         const scheduleToUpdate = schedules.find(s => s._id === id);
         setSuccess('');
         try {
-            await axios.put(`http://localhost:5001/api/schedules/${id}`, {
+            await api.put(`/api/schedules/${id}`, {
                 area: scheduleToUpdate.area,
                 collection: scheduleToUpdate.collection
             }, getConfig());
@@ -49,7 +49,7 @@ const EditSchedule = () => {
     const handleAdd = async () => {
         setSuccess('');
         try {
-            await axios.post('http://localhost:5001/api/schedules', {}, getConfig());
+            await api.post('/api/schedules', {}, getConfig());
             fetchSchedules();
         } catch (err) {
             setError('Failed to add new schedule.');
@@ -60,7 +60,7 @@ const EditSchedule = () => {
         if (window.confirm('Are you sure you want to delete this schedule?')) {
             setSuccess('');
             try {
-                await axios.delete(`http://localhost:5001/api/schedules/${id}`, getConfig());
+                await api.delete(`api/schedules/${id}`, getConfig());
                 fetchSchedules();
             } catch (err) {
                 setError('Failed to delete schedule.');

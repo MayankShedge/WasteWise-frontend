@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios.js';
 
 const RegisterPage = () => {
     const [name, setName] = useState('');
@@ -24,7 +24,7 @@ const RegisterPage = () => {
                 userData.secretKey = secretKey;
             }
 
-            const { data } = await axios.post('http://localhost:5001/api/users/register', userData);
+            const { data } = await api.post('/api/users/register', userData);
             setSuccess(data.message);
         } catch (err) {
             setError(err.response?.data?.message || 'An error occurred during registration.');
