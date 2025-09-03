@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../api/axios'; // Use our central API utility
 import { useAuth } from '../context/AuthContext';
 
-// --- IMPORTANT: We now import a different part of the TensorFlow.js library ---
+// Import the core TensorFlow.js library
 import * as tf from '@tensorflow/tfjs';
-import { loadGraphModel } from '@tensorflow/tfjs-converter';
-
 
 const Spinner = () => (
     <div className="flex justify-center items-center">
@@ -13,14 +11,11 @@ const Spinner = () => (
     </div>
 );
 
-// --- NEW MAPPING LOGIC ---
-// Our model predicts 'O' or 'R'. We map these to our app's categories.
+// Mapping for our custom model's predictions ('O' and 'R')
 const wasteMapping = {
     'O': 'Wet Waste',
     'R': 'Dry Waste',
 };
-
-// --- NEW CLASS NAMES ---
 // This array MUST match the order the model learned: {'O': 0, 'R': 1}
 const CLASS_NAMES = ['O', 'R'];
 
@@ -38,14 +33,13 @@ const ScannerPage = () => {
 
     const { userInfo, updateUser } = useAuth(); 
 
-    // Load our new custom model from the public folder
     useEffect(() => {
         const loadModel = async () => {
             try {
                 await tf.ready();
-                // --- THIS IS THE CRUCIAL CHANGE ---
-                // We now load our model from the local public URL
-                model.current = await loadGraphModel('/model/model.json');
+                // --- THIS IS THE CORRECTED LINE ---
+                // We use tf.loadLayersModel for models converted from Keras (.h5)
+                model.current = await tf.loadLayersModel('/model/model.json');
                 setModelStatus('Custom AI Model Ready!');
             } catch (err) {
                 console.error("Failed to load custom model:", err);
@@ -74,21 +68,18 @@ const ScannerPage = () => {
         setError('');
 
         try {
-            // --- UPDATED PREDICTION LOGIC ---
-            // 1. Pre-process the image to match the model's requirements
+            // Pre-process the image for our model
             const imageTensor = tf.browser.fromPixels(imageRef.current)
                 .resizeNearestNeighbor([224, 224])
                 .toFloat()
                 .expandDims();
 
-            // 2. Make a prediction
+            // Make a prediction using the custom model
             const predictions = await model.current.predict(imageTensor).data();
             
-            // 3. Get the index of the highest prediction
             const topPredictionIndex = predictions.indexOf(Math.max(...predictions));
             const topPredictionClass = CLASS_NAMES[topPredictionIndex];
             
-            // 4. Map the prediction to our category
             const category = wasteMapping[topPredictionClass] || 'Unknown';
             const finalResult = { item: `Classified as ${category}`, category };
             setResult(finalResult);
@@ -96,13 +87,14 @@ const ScannerPage = () => {
             // Clean up the tensor to free up memory
             imageTensor.dispose();
             
-            // 5. Award points and log history (this logic remains the same)
+            // Award points and log history if user is logged in
             if (finalResult && userInfo) {
                 const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
                 try {
-                    const { data: updatedUser } = await axios.post('http://localhost:5001/api/users/add-points', {}, config);
+                    // Use the central 'api' utility for all calls
+                    const { data: updatedUser } = await api.post('/api/users/add-points', {}, config);
                     updateUser(updatedUser); 
-                    await axios.post('http://localhost:5001/api/history', { 
+                    await api.post('/api/history', { 
                         item: finalResult.item, 
                         category: finalResult.category 
                     }, config);
@@ -126,7 +118,6 @@ const ScannerPage = () => {
                 <p className={`text-sm mt-1 font-semibold ${modelStatus === 'Custom AI Model Ready!' ? 'text-green-600' : 'text-yellow-600'}`}>{modelStatus}</p>
             </div>
             
-            {/* The rest of the JSX remains exactly the same */}
             <div className="mt-8 p-4 sm:p-8 bg-white rounded-2xl shadow-lg">
                 <div className="w-full h-56 sm:h-64 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 text-gray-400">
                     {preview ? <img ref={imageRef} src={preview} alt="Preview" className="h-full w-full object-contain rounded-lg" /> : 'Image preview will appear here'}
