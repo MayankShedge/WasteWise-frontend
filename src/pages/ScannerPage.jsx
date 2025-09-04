@@ -49,11 +49,6 @@ const WASTE_CATEGORY_CONFIG = {
         icon: <WarningIcon />,
         description: 'Handle with care. Do not mix with other waste.',
     },
-    'Sanitary Waste': { // <-- CORRECTED
-        styles: 'bg-purple-50 border-purple-500 text-purple-800',
-        icon: <HealthIcon />,
-        description: 'Wrap securely before disposing in general waste.',
-    },
     'Biomedical Waste': { // <-- CORRECTED
         styles: 'bg-pink-50 border-pink-500 text-pink-800',
         icon: <BiohazardIcon />,
@@ -63,11 +58,6 @@ const WASTE_CATEGORY_CONFIG = {
         styles: 'bg-gray-50 border-gray-500 text-gray-800',
         icon: <ElectronicsIcon />,
         description: 'Electronic waste must be disposed of at designated collection points.',
-    },
-    'Inert Waste': { // <-- CORRECTED
-        styles: 'bg-yellow-50 border-yellow-500 text-yellow-800',
-        icon: <RockIcon />,
-        description: 'This includes construction debris. Not for regular bins.',
     },
     // Fallback for any unknown categories
     'Unknown': {
@@ -102,7 +92,7 @@ const ScannerPage = () => {
 
     useEffect(() => {
         const loadModel = async () => {
-            const modelURL = 'https://teachablemachine.withgoogle.com/models/q_V1pCS8w/model.json';
+            const modelURL = 'https://teachablemachine.withgoogle.com/models/DshggloHh/model.json';
             
             try {
                 await tf.ready();
