@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { badges } from '../utils/badgeDefn.js'; // 1. Import all badge definitions
 
 const ProfilePage = () => {
     const [history, setHistory] = useState([]);
@@ -42,12 +43,10 @@ const ProfilePage = () => {
     if (error) return <p className="text-red-500 text-center p-8">{error}</p>;
 
     return (
-        // --- RESPONSIVE CHANGES APPLIED ---
         <div className="container mx-auto py-8 px-4 sm:px-6 animate-fadeIn">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800">My Impact</h1>
-            <p className="text-md md:text-lg text-gray-600 mt-2">Here's a summary of your contribution to a cleaner Navi Mumbai!</p>
+            <p className="text-md md:text-lg text-gray-600 mt-2">Here's a summary of your contribution!</p>
             
-            {/* Stats Cards: Will stack on mobile and form a grid on larger screens */}
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 <div className="bg-blue-500 text-white p-6 rounded-xl shadow-lg text-center sm:text-left">
                     <h2 className="text-4xl font-bold">{stats.total || 0}</h2>
@@ -63,7 +62,23 @@ const ProfilePage = () => {
                 </div>
             </div>
 
-            {/* Scan History */}
+            {/* --- NEW: MY BADGES SECTION --- */}
+            <div className="mt-12">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">My Badges</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                    {badges.map((badge) => {
+                        const hasBadge = userInfo.points >= badge.points;
+                        return (
+                            <div key={badge.name} className={`p-6 rounded-lg text-center border-2 transition-all ${hasBadge ? 'border-green-400 bg-green-50 shadow-md' : 'border-gray-200 bg-gray-50'}`}>
+                                <div className={`text-5xl transition-colors ${hasBadge ? badge.color : 'text-gray-300'}`}>{badge.icon}</div>
+                                <h3 className={`mt-4 text-lg font-bold ${hasBadge ? 'text-gray-800' : 'text-gray-400'}`}>{badge.name}</h3>
+                                <p className={`mt-1 text-sm ${hasBadge ? 'text-gray-600' : 'text-gray-400'}`}>{hasBadge ? badge.description : `Reach ${badge.points} points to unlock.`}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
             <div className="mt-12">
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Your Scan History</h2>
                 {history.length > 0 ? (

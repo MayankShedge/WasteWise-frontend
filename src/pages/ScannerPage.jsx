@@ -490,7 +490,7 @@ const ScannerPage = () => {
                 setModelStatus('Loading Enhanced AI Model...');
                 await tf.ready();
                 model.current = await mobilenet.load();
-                setModelStatus('Enhanced AI Model Ready! (2000+ Items Supported)');
+                setModelStatus('AI Model Loaded Successfully');
             } catch (err) {
                 console.error("Failed to load model:", err);
                 setModelStatus('Failed to load Enhanced AI Model.');
@@ -562,7 +562,7 @@ const ScannerPage = () => {
         <div className="container mx-auto max-w-2xl py-8 px-4 sm:px-6 animate-fadeIn">
             <div className="text-center">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-800">Scan Your Waste</h1>
-                <p className="text-md sm:text-lg text-gray-600 mt-2">Enhanced AI with 2000+ items classification!</p>
+                <p className="text-md sm:text-lg text-gray-600 mt-2">Our AI model will help you identify Waste</p>
                 <p className={`text-sm mt-1 font-semibold ${modelStatus.includes('Ready') ? 'text-green-600' : 'text-yellow-600'}`}>
                     {modelStatus}
                 </p>
