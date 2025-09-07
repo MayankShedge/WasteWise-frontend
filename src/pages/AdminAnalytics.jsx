@@ -48,10 +48,11 @@ const AdminAnalyticsPage = () => {
             label: 'Waste Category Breakdown',
             data: stats.categoryStats.map(c => c.count),
             backgroundColor: [
-                'rgba(59, 130, 246, 0.7)', // Blue for Dry Waste
-                'rgba(34, 197, 94, 0.7)',  // Green for Wet Waste
-                'rgba(168, 85, 247, 0.7)', // Purple for E-Waste
-                'rgba(239, 68, 68, 0.7)',   // Red for Hazardous
+                'rgba(59, 130, 246, 0.7)', 
+                'rgba(34, 197, 94, 0.7)',  
+                'rgba(168, 85, 247, 0.7)', 
+                'rgba(239, 68, 68, 0.7)',   
+                'rgba(45, 130, 130, 0.7)'
             ],
             borderColor: '#ffffff',
             borderWidth: 2,

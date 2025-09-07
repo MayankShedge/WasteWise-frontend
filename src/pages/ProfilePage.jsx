@@ -60,6 +60,18 @@ const ProfilePage = () => {
                     <h2 className="text-4xl font-bold">{stats['Dry Waste'] || 0}</h2>
                     <p className="mt-1">Dry Waste Items</p>
                 </div>
+                    <div className="bg-yellow-500 text-white p-6 rounded-xl shadow-lg text-center sm:text-left">
+                    <h2 className="text-4xl font-bold">{stats['E-waste'] || 0}</h2>
+                    <p className="mt-1">E-Waste Items</p>
+                </div>
+                    <div className="bg-red-500 text-white p-6 rounded-xl shadow-lg text-center sm:text-left">
+                    <h2 className="text-4xl font-bold">{stats['Hazardous Waste'] || 0}</h2>
+                    <p className="mt-1">Hazardous Waste Items</p>
+                </div>
+                    <div className="bg-pink-500 text-white p-6 rounded-xl shadow-lg text-center sm:text-left">
+                    <h2 className="text-4xl font-bold">{stats['Biomedical Waste'] || 0}</h2>
+                    <p className="mt-1">Biomedical Waste Items</p>
+                </div>
             </div>
 
             {/* --- NEW: MY BADGES SECTION --- */}
@@ -97,9 +109,15 @@ const ProfilePage = () => {
                                         } ${
                                             scan.category.includes('Dry') ? 'bg-blue-100 text-blue-800' : ''
                                         } ${
-                                            scan.category.includes('E-Waste') ? 'bg-purple-100 text-purple-800' : ''
+                                            scan.category.includes('E-waste') ? 'bg-purple-100 text-purple-800' : ''
                                         } ${
-                                            scan.category.includes('Hazardous') ? 'bg-red-100 text-red-800' : ''
+                                            scan.category.includes('Hazardous Waste') ? 'bg-red-100 text-red-800' : ''
+                                        }
+                                        ${
+                                            scan.category.includes('Biomedical Waste') ? 'bg-pink-100 text-pink-800' : ''
+                                        }
+                                        ${
+                                            scan.category.includes('General Waste') ? 'bg-gray-100 text-gray-800' : ''
                                         }`}>{scan.category}</span>
                                     </div>
                                 </li>
