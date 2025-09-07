@@ -29,7 +29,6 @@ const LoginPage = () => {
     };
 
     return (
-        // --- RESPONSIVE CHANGES APPLIED ---
         <div className="flex justify-center items-center min-h-[80vh] py-12 px-4 sm:px-6 animate-fadeIn">
             <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-lg">
                 <h2 className="text-3xl font-bold text-center text-gray-800">Welcome Back!</h2>
@@ -60,6 +59,14 @@ const LoginPage = () => {
                             className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
                         />
                     </div>
+
+                    {/* --- THIS LINK HAS BEEN ADDED --- */}
+                    <div className="text-right text-sm">
+                        <Link to="/forgot-password" className="font-medium text-green-600 hover:text-green-500">
+                            Forgot your password?
+                        </Link>
+                    </div>
+
                      {error && <p className="text-sm text-red-600 text-center">{error}</p>}
                     <div>
                         <button

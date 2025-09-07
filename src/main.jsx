@@ -25,6 +25,8 @@ import LeaderboardPage from './pages/Leaderboard.jsx';
 import AdminAnalyticsPage from './pages/AdminAnalytics.jsx'; 
 import ArticlesPage from './pages/Articles.jsx';
 import ArticleDetailPage from './pages/ArticleDetail.jsx';
+import ForgotPasswordPage from './pages/forgotPage.jsx'; // 1. Import new pages
+import ResetPasswordPage from './pages/resetPage.jsx';
 
 import { AuthProvider } from './context/AuthContext.jsx';
 
@@ -43,6 +45,8 @@ const router = createBrowserRouter([
       { path: 'articles/:id', element: <ArticleDetailPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> }, // 2. Add new routes
+      { path: 'reset-password/:token', element: <ResetPasswordPage /> },
       
       // Routes protected for any logged-in user
       {
