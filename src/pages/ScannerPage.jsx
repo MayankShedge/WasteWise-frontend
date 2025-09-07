@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import * as tf from '@tensorflow/tfjs';
 import * as mobilenet from '@tensorflow-models/mobilenet';
 
-// Icons remain the same...
 const LeafIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -41,68 +40,204 @@ const UnknownIcon = () => (
     </svg>
 );
 
-// 🚀 ENHANCED IMAGE PREPROCESSING (No new dependencies needed)
 const enhanceImage = (imageElement) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // Optimal size for MobileNet
     canvas.width = 224;
     canvas.height = 224;
     
-    // Enhanced image quality settings
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     
-    // Better image scaling
     ctx.drawImage(imageElement, 0, 0, 224, 224);
     
-    // Return enhanced canvas for model processing
     return canvas;
 };
 
-// 🎯 UPGRADED MOBILENET LOADING (Better configuration)
-const loadEnhancedMobileNet = async () => {
+const loadAdvancedMobileNet = async () => {
     try {
-        // Load MobileNet v2 with optimal settings
         const model = await mobilenet.load({
-            version: 2,        // Use v2 (better accuracy than v1)
-            alpha: 1.0,       // Full model (not compressed)
-            inputRange: [0, 1] // Normalized input range
+            version: 2,
+            alpha: 1.0,
+            inputRange: [0, 1]
         });
         return model;
     } catch (error) {
-        // Fallback to default MobileNet if v2 fails
-        console.log('MobileNet v2 failed, falling back to v1');
         return await mobilenet.load();
     }
 };
 
-// 🔥 ENHANCED CLASSIFICATION (Better prediction processing)
-const enhancedClassify = async (model, imageElement) => {
+const superEnhancedClassify = async (model, imageElement) => {
     try {
-        // Use enhanced image preprocessing
         const enhancedCanvas = enhanceImage(imageElement);
+        const predictions = await model.classify(enhancedCanvas, 10);
         
-        // Get more predictions for better analysis
-        const predictions = await model.classify(enhancedCanvas, 8); // Increased from 5 to 8
-        
-        // Enhanced post-processing
         const processedPredictions = predictions.map((pred, index) => ({
             className: pred.className,
             probability: pred.probability,
-            rank: index + 1
+            rank: index + 1,
+            confidence: pred.probability
         }));
         
         return processedPredictions;
     } catch (error) {
-        console.error('Enhanced classification failed:', error);
-        // Fallback to original element
         return await model.classify(imageElement, 5);
     }
 };
 
-// 🎯 IMPROVED WASTE CLASSIFICATION (Better scoring algorithm)
+const learningEnhancedClassify = async (model, imageElement) => {
+    const predictions = await superEnhancedClassify(model, imageElement);
+    
+    for (let i = 0; i < Math.min(predictions.length, 3); i++) {
+        const prediction = predictions[i];
+        const detectedItem = prediction.className.toLowerCase();
+        
+        try {
+            const response = await api.get(`/api/learning/${encodeURIComponent(detectedItem)}`);
+            const learningData = response.data;
+            
+            if (learningData.hasLearning) {
+                const learningConfidence = Math.min(
+                    (prediction.probability + 0.3) * learningData.confidence, 
+                    1.0
+                );
+                
+                return {
+                    category: learningData.correctCategory,
+                    confidence: learningConfidence,
+                    method: 'Learning Enhanced',  // ✅ FIXED - Generic name
+                    detectedItem: prediction.className,
+                    styles: getCategoryStyles(learningData.correctCategory),
+                    icon: getCategoryIcon(learningData.correctCategory),
+                    description: getCategoryDescription(learningData.correctCategory, prediction.className) + 
+                              ` (Learned from ${learningData.frequency} user correction${learningData.frequency > 1 ? 's' : ''})`
+                };
+            }
+        } catch (learningError) {
+            continue;
+        }
+    }
+    
+    return await hybridSuperClassify(model, imageElement);
+};
+
+const advancedTextClassification = (predictions) => {
+    const wasteKeywords = {
+        'Wet Waste': {
+            primary: ['banana', 'apple', 'orange', 'fruit', 'vegetable', 'food', 'organic', 'bread', 'meat', 'pizza', 'cake'],
+            secondary: ['sandwich', 'soup', 'salad', 'rice', 'pasta', 'cookie', 'bagel', 'pretzel', 'taco', 'burger'],
+            tertiary: ['snack', 'meal', 'dinner', 'lunch', 'breakfast', 'dish', 'plate'],
+            multiplier: 1.5
+        },
+        'Dry Waste': {
+            primary: ['bottle', 'can', 'plastic', 'glass', 'paper', 'metal', 'container', 'box', 'aluminum', 'steel'],
+            secondary: ['cup', 'jar', 'bag', 'cardboard', 'packaging', 'wrapper', 'carton', 'tin', 'foil'],
+            tertiary: ['recyclable', 'material', 'waste', 'trash', 'garbage'],
+            multiplier: 1.4
+        },
+        'E-waste': {
+            primary: ['phone', 'computer', 'electronic', 'battery', 'device', 'digital', 'camera', 'laptop', 'tablet'],
+            secondary: ['monitor', 'keyboard', 'mouse', 'charger', 'cable', 'circuit', 'processor', 'chip'],
+            tertiary: ['technology', 'gadget', 'equipment', 'machine', 'appliance'],
+            multiplier: 1.6
+        },
+        'Hazardous Waste': {
+            primary: ['chemical', 'paint', 'oil', 'toxic', 'hazardous', 'lighter', 'spray', 'aerosol'],
+            secondary: ['cleaner', 'solvent', 'pesticide', 'fuel', 'gas', 'acid', 'bleach'],
+            tertiary: ['dangerous', 'harmful', 'poison', 'flammable'],
+            multiplier: 1.3
+        },
+        'Biomedical Waste': {
+            primary: ['medical', 'syringe', 'pill', 'medicine', 'hospital', 'pharmaceutical', 'drug'],
+            secondary: ['bandage', 'needle', 'surgical', 'vaccine', 'specimen', 'laboratory'],
+            tertiary: ['health', 'clinical', 'therapy', 'treatment'],
+            multiplier: 1.4
+        }
+    };
+
+    let categoryScores = {};
+    Object.keys(wasteKeywords).forEach(category => {
+        categoryScores[category] = 0;
+    });
+
+    for (let i = 0; i < Math.min(predictions.length, 8); i++) {
+        const prediction = predictions[i];
+        const className = prediction.className.toLowerCase();
+        const confidence = prediction.probability;
+        const positionWeight = Math.max(0.5, 1 - (i * 0.08));
+        const baseScore = confidence * positionWeight;
+
+        Object.keys(wasteKeywords).forEach(category => {
+            const keywords = wasteKeywords[category];
+            let categoryScore = 0;
+
+            keywords.primary.forEach(keyword => {
+                if (className.includes(keyword)) {
+                    categoryScore += baseScore * keywords.multiplier;
+                }
+            });
+
+            keywords.secondary.forEach(keyword => {
+                if (className.includes(keyword)) {
+                    categoryScore += baseScore * (keywords.multiplier * 0.7);
+                }
+            });
+
+            keywords.tertiary.forEach(keyword => {
+                if (className.includes(keyword)) {
+                    categoryScore += baseScore * (keywords.multiplier * 0.4);
+                }
+            });
+
+            categoryScores[category] += categoryScore;
+        });
+    }
+
+    const bestCategory = Object.keys(categoryScores).reduce((a, b) => 
+        categoryScores[a] > categoryScores[b] ? a : b
+    );
+    const bestScore = categoryScores[bestCategory];
+
+    return {
+        category: bestCategory,
+        confidence: Math.min(bestScore, 1.0),
+        method: 'Advanced Text Analysis',
+        scores: categoryScores
+    };
+};
+
+const hybridSuperClassify = async (model, imageElement) => {  
+    const predictions = await superEnhancedClassify(model, imageElement);
+    const traditionalResult = classifyWasteFromImageNet(predictions);
+    const advancedResult = advancedTextClassification(predictions);
+    
+    let finalResult;
+    
+    if (advancedResult.confidence > traditionalResult.confidence) {
+        finalResult = {
+            category: advancedResult.category,
+            confidence: advancedResult.confidence,
+            method: advancedResult.method,
+            detectedItem: predictions[0].className,
+            styles: getCategoryStyles(advancedResult.category),
+            icon: getCategoryIcon(advancedResult.category),
+            description: getCategoryDescription(advancedResult.category, predictions[0].className)
+        };
+    } else {
+        finalResult = {
+            ...traditionalResult,
+            method: 'Enhanced MobileNet v2'
+        };
+    }
+    
+    if (traditionalResult.category === advancedResult.category) {
+        finalResult.confidence = Math.min((finalResult.confidence + 0.15), 1.0);
+        finalResult.method = 'Hybrid Agreement';
+    }
+    return finalResult;
+};
+
 const classifyWasteFromImageNet = (predictions) => {
     const wasteMapping = {
         organic: {
@@ -203,82 +338,77 @@ const classifyWasteFromImageNet = (predictions) => {
         'Biomedical Waste': 0
     };
 
-    // 🔥 ENHANCED SCORING ALGORITHM
-    for (let i = 0; i < Math.min(predictions.length, 8); i++) { // Analyze more predictions
+    for (let i = 0; i < Math.min(predictions.length, 10); i++) {
         const prediction = predictions[i];
         const className = prediction.className.toLowerCase();
         const confidence = prediction.probability;
         
-        // Better position weighting (less harsh penalty)
-        const positionWeight = Math.max(0.3, 1 - (i * 0.08));
+        const positionWeight = Math.max(0.3, 1 - (i * 0.07));
         const baseScore = confidence * positionWeight;
 
-        // Organic waste scoring with bonuses
         let organicScore = 0;
         if (wasteMapping.organic.exact.some(item => className.includes(item))) {
-            organicScore = baseScore * 1.3; // 30% bonus for exact matches
+            organicScore = baseScore * 1.4;
         } else if (wasteMapping.organic.vegetables.some(item => className.includes(item))) {
-            organicScore = baseScore * 1.1;  
+            organicScore = baseScore * 1.2;  
         } else if (wasteMapping.organic.food.some(item => className.includes(item))) {
-            organicScore = baseScore * 1.1;
+            organicScore = baseScore * 1.2;
         } else if (wasteMapping.organic.indicators.some(indicator => className.includes(indicator))) {
-            organicScore = baseScore * 0.8;
+            organicScore = baseScore * 0.9;
         }
 
-        // Similar enhanced scoring for other categories
         let recyclableScore = 0;
         if (wasteMapping.recyclable.glass.some(item => className.includes(item))) {
-            recyclableScore = baseScore * 1.3;
+            recyclableScore = baseScore * 1.4;
         } else if (wasteMapping.recyclable.metal.some(item => className.includes(item))) {
-            recyclableScore = baseScore * 1.3;
+            recyclableScore = baseScore * 1.4;
         } else if (wasteMapping.recyclable.paper.some(item => className.includes(item))) {
-            recyclableScore = baseScore * 1.1;
+            recyclableScore = baseScore * 1.2;
         } else if (wasteMapping.recyclable.plastic.some(item => className.includes(item))) {
-            recyclableScore = baseScore * 1.0;
+            recyclableScore = baseScore * 1.1;
         } else if (wasteMapping.recyclable.indicators.some(indicator => className.includes(indicator))) {
-            recyclableScore = baseScore * 0.8;
+            recyclableScore = baseScore * 0.9;
         }
 
         let electronicScore = 0;
         if (wasteMapping.electronic.computing.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.3;
+            electronicScore = baseScore * 1.5;
         } else if (wasteMapping.electronic.mobile.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.3;
+            electronicScore = baseScore * 1.5;
         } else if (wasteMapping.electronic.entertainment.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.3;
+            electronicScore = baseScore * 1.4;
         } else if (wasteMapping.electronic.cameras.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.3;
+            electronicScore = baseScore * 1.4;
         } else if (wasteMapping.electronic.small.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.1;
+            electronicScore = baseScore * 1.2;
         } else if (wasteMapping.electronic.indicators.some(indicator => className.includes(indicator))) {
-            electronicScore = baseScore * 0.9;
+            electronicScore = baseScore * 1.0;
         }
 
         let hazardousScore = 0;
         if (wasteMapping.hazardous.chemicals.some(item => className.includes(item))) {
-            hazardousScore = baseScore * 1.0;
-        } else if (wasteMapping.hazardous.automotive.some(item => className.includes(item))) {
-            hazardousScore = baseScore * 0.9;
-        } else if (wasteMapping.hazardous.flammable.some(item => className.includes(item))) {
             hazardousScore = baseScore * 1.2;
-        } else if (wasteMapping.hazardous.paint.some(item => className.includes(item))) {
+        } else if (wasteMapping.hazardous.automotive.some(item => className.includes(item))) {
             hazardousScore = baseScore * 1.0;
+        } else if (wasteMapping.hazardous.flammable.some(item => className.includes(item))) {
+            hazardousScore = baseScore * 1.3;
+        } else if (wasteMapping.hazardous.paint.some(item => className.includes(item))) {
+            hazardousScore = baseScore * 1.1;
         } else if (wasteMapping.hazardous.indicators.some(indicator => className.includes(indicator))) {
-            hazardousScore = baseScore * 0.8;
+            hazardousScore = baseScore * 0.9;
         }
 
         let medicalScore = 0;
         if (wasteMapping.medical.instruments.some(item => className.includes(item))) {
-            medicalScore = baseScore * 1.3;
+            medicalScore = baseScore * 1.5;
         } else if (wasteMapping.medical.containers.some(item => className.includes(item))) {
-            medicalScore = baseScore * 1.0;
-        } else if (wasteMapping.medical.equipment.some(item => className.includes(item))) {
             medicalScore = baseScore * 1.1;
+        } else if (wasteMapping.medical.equipment.some(item => className.includes(item))) {
+            medicalScore = baseScore * 1.2;
         } else if (wasteMapping.medical.indicators.some(indicator => className.includes(indicator))) {
-            medicalScore = baseScore * 0.9;
+            medicalScore = baseScore * 1.0;
         }
 
-        // Accumulate scores
         categoryScores['Wet Waste'] += organicScore;
         categoryScores['Dry Waste'] += recyclableScore;  
         categoryScores['E-waste'] += electronicScore;
@@ -291,8 +421,7 @@ const classifyWasteFromImageNet = (predictions) => {
     );
     const bestCategoryScore = categoryScores[bestCategory];
 
-    // Lower threshold for classification (more sensitive)
-    if (bestCategoryScore < 0.2) {
+    if (bestCategoryScore < 0.15) {
         return intelligentFallback(predictions[0]);
     }
 
@@ -303,11 +432,10 @@ const classifyWasteFromImageNet = (predictions) => {
         icon: getCategoryIcon(bestCategory),
         description: getCategoryDescription(bestCategory, topPrediction.className),
         detectedItem: topPrediction.className,
-        confidence: topPrediction.probability
+        confidence: bestCategoryScore
     };
 };
 
-// All your helper functions remain the same...
 const intelligentFallback = (prediction) => {
     const className = prediction.className.toLowerCase();
     
@@ -406,13 +534,113 @@ const Spinner = () => (
     </div>
 );
 
+const FeedbackSystem = ({ result, onFeedback, userInfo }) => {
+    const [showFeedback, setShowFeedback] = useState(false);
+    const [userCorrection, setUserCorrection] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    
+    const submitFeedback = async (isCorrect, correction = null) => {
+        if (!userInfo) {
+            onFeedback('Please log in to provide feedback.');
+            return;
+        }
+        
+        setSubmitting(true);
+        
+        const feedback = {
+            originalResult: {
+                category: result.category,
+                confidence: result.confidence,
+                method: result.method || 'Unknown',
+                detectedItem: result.detectedItem
+            },
+            userSaysCorrect: isCorrect,
+            userCorrection: correction,
+            timestamp: new Date().toISOString()
+        };
+        
+        try {
+            const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+            await api.post('/api/feedback', feedback, config);
+            onFeedback('Thank you for your feedback! This helps improve our AI.');
+            setShowFeedback(false);
+        } catch (error) {
+            onFeedback('Failed to submit feedback. Please try again.');
+            setShowFeedback(false);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+    
+    if (!result) return null;
+    
+    return (
+        <div className="feedback-system mt-4 p-4 bg-gray-50 rounded-lg border">
+            <p className="text-sm font-medium text-gray-700 mb-2">Was this classification correct?</p>
+            
+            <div className="flex space-x-2">
+                <button 
+                    onClick={() => submitFeedback(true)}
+                    disabled={submitting}
+                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 transition-colors"
+                >
+                    ✓ Correct
+                </button>
+                
+                <button 
+                    onClick={() => setShowFeedback(true)}
+                    disabled={submitting}
+                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 transition-colors"
+                >
+                    ✗ Incorrect
+                </button>
+            </div>
+            
+            {showFeedback && (
+                <div className="mt-3 space-y-2">
+                    <select 
+                        value={userCorrection}
+                        onChange={(e) => setUserCorrection(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="">Select correct category...</option>
+                        <option value="Wet Waste">Wet Waste</option>
+                        <option value="Dry Waste">Dry Waste</option>
+                        <option value="E-waste">E-waste</option>
+                        <option value="Hazardous Waste">Hazardous Waste</option>
+                        <option value="Biomedical Waste">Biomedical Waste</option>
+                    </select>
+                    
+                    <div className="flex space-x-2">
+                        <button 
+                            onClick={() => submitFeedback(false, userCorrection)}
+                            disabled={!userCorrection || submitting}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 transition-colors"
+                        >
+                            {submitting ? 'Submitting...' : 'Submit Correction'}
+                        </button>
+                        
+                        <button 
+                            onClick={() => setShowFeedback(false)}
+                            className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ScannerPage = () => {
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState('');
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [modelStatus, setModelStatus] = useState('Loading Enhanced MobileNet...');
+    const [modelStatus, setModelStatus] = useState('🚀 Loading Advanced AI...');
     const [error, setError] = useState('');
+    const [feedback, setFeedback] = useState('');
     
     const model = useRef(null);
     const imageRef = useRef();
@@ -421,16 +649,14 @@ const ScannerPage = () => {
     useEffect(() => {
         const loadModel = async () => {
             try {
-                setModelStatus('Loading Enhanced MobileNet...');
+                setModelStatus('🚀 Loading Advanced AI...');
                 await tf.ready();
                 
-                // Load enhanced MobileNet
-                model.current = await loadEnhancedMobileNet();
-                setModelStatus('Enhanced MobileNet Ready! (v2 Optimized)');
+                model.current = await loadAdvancedMobileNet();
+                setModelStatus('🎉 Advanced AI Ready! (Learning Enabled)');
             } catch (err) {
-                console.error("Failed to load enhanced model:", err);
-                setModelStatus('Failed to load Enhanced Model.');
-                setError('Could not load the AI model. Please check your internet connection and refresh.');
+                setModelStatus('⚡ AI Ready! (Fallback Mode)');
+                setError('Could not load the advanced AI model. Using fallback mode.');
             }
         };
         loadModel();
@@ -442,6 +668,7 @@ const ScannerPage = () => {
             setFile(selectedFile);
             setResult(null);
             setError('');
+            setFeedback('');
             const reader = new FileReader();
             reader.onloadend = () => setPreview(reader.result);
             reader.readAsDataURL(selectedFile);
@@ -452,23 +679,21 @@ const ScannerPage = () => {
         if (!file || !model.current || !imageRef.current) return;
         setLoading(true);
         setError('');
+        setFeedback('');
 
         try {
-            // Use enhanced classification
-            const predictions = await enhancedClassify(model.current, imageRef.current);
-            
-            const wasteClassification = classifyWasteFromImageNet(predictions);
+            const wasteClassification = await learningEnhancedClassify(model.current, imageRef.current);
             
             const finalResult = {
                 category: wasteClassification.category,
                 detectedItem: wasteClassification.detectedItem,
                 confidence: (wasteClassification.confidence * 100).toFixed(1),
-                config: wasteClassification,
+                method: wasteClassification.method,
+                styles: wasteClassification.styles,
+                icon: wasteClassification.icon,
+                description: wasteClassification.description,
                 isRecyclable: RECYCLABLE_CATEGORIES.includes(wasteClassification.category),
-                allPredictions: predictions.slice(0, 3).map(p => ({
-                    label: p.className,
-                    confidence: (p.probability * 100).toFixed(1)
-                }))
+                timestamp: new Date().toISOString()
             };
 
             setResult(finalResult);
@@ -478,17 +703,29 @@ const ScannerPage = () => {
                 try {
                     const { data: updatedUser } = await api.post('/api/users/add-points', {}, config);
                     updateUser(updatedUser);
-                    await api.post('/api/history', { 
-                        item: `Classified as ${finalResult.category} (${finalResult.detectedItem})`, 
-                        category: finalResult.category 
-                    }, config);
+                    
+                    const historyData = {
+                        item: `Classified as ${finalResult.category} (${finalResult.method})`, 
+                        category: finalResult.category,
+                        confidence: finalResult.confidence,
+                        method: finalResult.method,
+                        detectedItem: finalResult.detectedItem
+                    };
+                    
+                    await api.post('/api/history', historyData, config);
                 } catch (pointError) {
-                    console.error("Failed to update points or log history:", pointError);
+                    try {
+                        await api.post('/api/history', { 
+                            item: `Classified as ${finalResult.category}`, 
+                            category: finalResult.category 
+                        }, config);
+                    } catch (fallbackError) {
+                        console.error("All history logging failed:", fallbackError);
+                    }
                 }
             }
         } catch (err) {
             setError('Could not classify the image. Please try another one.');
-            console.error('Enhanced Classification Error:', err);
         } finally {
             setLoading(false);
         }
@@ -498,7 +735,7 @@ const ScannerPage = () => {
         <div className="container mx-auto max-w-2xl py-8 px-4 sm:px-6 animate-fadeIn">
             <div className="text-center">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-800">Scan Your Waste</h1>
-                <p className="text-md sm:text-lg text-gray-600 mt-2">Enhanced MobileNet v2 for better accuracy!</p>
+                <p className="text-md sm:text-lg text-gray-600 mt-2">AI with Learning System - Gets Smarter with Feedback!</p>
                 <p className={`text-sm mt-1 font-semibold ${modelStatus.includes('Ready') ? 'text-green-600' : 'text-yellow-600'}`}>
                     {modelStatus}
                 </p>
@@ -539,10 +776,10 @@ const ScannerPage = () => {
                 {error && <p className="mt-4 text-center text-red-500 font-semibold">{error}</p>}
                 
                 {result && (
-                    <div className={`mt-8 p-5 rounded-xl shadow-lg border-l-8 transition-all duration-500 animate-fadeIn ${result.config.styles}`}>
+                    <div className={`mt-8 p-5 rounded-xl shadow-lg border-l-8 transition-all duration-500 animate-fadeIn ${result.styles}`}>
                         <div className="flex items-center space-x-4">
                             <div className="flex-shrink-0">
-                                {result.config.icon}
+                                {result.icon}
                             </div>
                             <div>
                                 <p className="font-semibold text-gray-600">Classified As</p>
@@ -553,7 +790,7 @@ const ScannerPage = () => {
                             </div>
                         </div>
 
-                        <p className="mt-4 text-gray-700">{result.config.description}</p>
+                        <p className="mt-4 text-gray-700">{result.description}</p>
                         
                         <div className="mt-4 pt-3 border-t border-gray-300/50">
                             <p className={`text-lg font-bold ${result.isRecyclable ? 'text-green-700' : 'text-red-700'}`}>
@@ -561,16 +798,19 @@ const ScannerPage = () => {
                             </p>
                         </div>
 
-                        {result.allPredictions && result.allPredictions.length > 1 && (
-                            <div className="mt-4 pt-3 border-t border-gray-300/50">
-                                <p className="text-sm font-semibold text-gray-600 mb-2">Enhanced AI detected objects:</p>
-                                <div className="text-xs text-gray-500 space-y-1">
-                                    {result.allPredictions.map((pred, idx) => (
-                                        <div key={idx}>
-                                            {pred.label}: {pred.confidence}%
-                                        </div>
-                                    ))}
-                                </div>
+                        <div className="mt-3 text-xs text-gray-500">
+                            Classification Method: {result.method}
+                        </div>
+
+                        <FeedbackSystem 
+                            result={result} 
+                            onFeedback={setFeedback}
+                            userInfo={userInfo}
+                        />
+                        
+                        {feedback && (
+                            <div className="mt-2 p-2 bg-blue-100 text-blue-800 rounded text-sm">
+                                {feedback}
                             </div>
                         )}
                     </div>
