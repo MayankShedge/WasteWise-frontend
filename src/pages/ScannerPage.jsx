@@ -484,21 +484,24 @@ const ScannerPage = () => {
     const imageRef = useRef();
     const { userInfo, updateUser } = useAuth();
 
-    useEffect(() => {
-        const loadModel = async () => {
-            try {
-                setModelStatus('Loading Enhanced AI Model...');
-                await tf.ready();
-                model.current = await mobilenet.load();
-                setModelStatus('AI Model Loaded Successfully');
-            } catch (err) {
-                console.error("Failed to load model:", err);
-                setModelStatus('Failed to load Enhanced AI Model.');
-                setError('Could not load the AI model. Please check your internet connection and refresh.');
-            }
-        };
-        loadModel();
-    }, []);
+const [isModelReady, setIsModelReady] = useState(false);
+
+useEffect(() => {
+  const loadModel = async () => {
+    try {
+      setModelStatus('Loading Enhanced AI Model...');
+      await tf.ready();
+      model.current = await mobilenet.load();
+      setIsModelReady(true);
+      setModelStatus('AI Model Loaded Successfully');
+    } catch (err) {
+      console.error("Failed to load model:", err);
+      setModelStatus('Failed to load Enhanced AI Model.');
+      setError('Could not load the AI model. Please check your internet connection and refresh.');
+    }
+  };
+  loadModel();
+}, []);
 
     const handleFileChange = (event) => {
         const selectedFile = event.target.files[0];
@@ -592,7 +595,7 @@ const ScannerPage = () => {
                     {file && (
                         <button 
                             onClick={handleClassify} 
-                            disabled={loading || !modelStatus.includes('Ready')} 
+                            disabled={loading || !isModelReady} 
                             className="mt-4 bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105 duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed min-w-[150px] w-full sm:w-auto"
                         >
                             {loading ? <Spinner /> : 'Classify Waste'}
