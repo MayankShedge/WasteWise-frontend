@@ -149,10 +149,10 @@ const learningEnhancedClassify = async (model, imageElement) => {
 };
 
 const improvedWasteClassification = async (predictions) => {
-    console.log('=== CLASSIFICATION START ===');
-    console.log('Top 5 predictions:', predictions.slice(0, 5).map(p => 
-        `${p.className} (${(p.probability * 100).toFixed(1)}%)`
-    ));
+    // console.log('=== CLASSIFICATION START ===');
+    // console.log('Top 5 predictions:', predictions.slice(0, 5).map(p => 
+    //     `${p.className} (${(p.probability * 100).toFixed(1)}%)`
+    // ));
 
     // Comprehensive waste category rules
     const wasteRules = {
@@ -386,43 +386,49 @@ const Spinner = () => (
     </div>
 );
 
-const FeedbackSystem = ({ result, onFeedback, userInfo }) => {
-    const [showFeedback, setShowFeedback] = useState(false);
-    const [userCorrection, setUserCorrection] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-    
-    const submitFeedback = async (isCorrect, correction = null) => {
-        if (!userInfo) {
-            onFeedback('Please log in to provide feedback.');
-            return;
-        }
+    const FeedbackSystem = ({ result, onFeedback, userInfo }) => {
+        const [showFeedback, setShowFeedback] = useState(false);
+        const [userCorrection, setUserCorrection] = useState('');
+        const [submitting, setSubmitting] = useState(false);
         
-        setSubmitting(true);
-        
-        const feedback = {
-            originalResult: {
-                category: result.category,
-                confidence: result.confidence,
-                method: result.method || 'Unknown',
-                detectedItem: result.detectedItem
-            },
-            userSaysCorrect: isCorrect,
-            userCorrection: correction,
-            timestamp: new Date().toISOString()
+        const submitFeedback = async (isCorrect, correction = null) => {
+            if (!userInfo) {
+                onFeedback('Please log in.');
+                return;
+            }
+            setSubmitting(true);
+            
+            // Ensure confidence is a clean number between 0-100
+            const cleanConfidence = Math.min(Math.max(parseFloat(result.confidence), 0), 100);
+
+            const feedback = {
+                originalResult: {
+                    category: result.category,
+                    confidence: cleanConfidence,
+                    method: result.method,
+                    detectedItem: result.detectedItem 
+                },
+                userSaysCorrect: isCorrect,
+                userCorrection: isCorrect ? result.category : correction,
+                imageMetadata: {
+                    size: null, 
+                    type: "image/jpeg",
+                    dimensions: { width: 224, height: 224 }
+                }
+            };
+            
+            try {
+                const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+                await api.post('/api/feedback', feedback, config);
+                onFeedback('Success!');
+                setShowFeedback(false);
+            } catch (error) {
+                console.error("Feedback Error:", error.response?.data);
+                onFeedback(error.response?.data?.message || 'Error');
+            } finally {
+                setSubmitting(false);
+            }
         };
-        
-        try {
-            const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-            await api.post('/api/feedback', feedback, config);
-            onFeedback('Thank you for your feedback! This helps improve our AI.');
-            setShowFeedback(false);
-        } catch (error) {
-            onFeedback('Failed to submit feedback. Please try again.');
-            setShowFeedback(false);
-        } finally {
-            setSubmitting(false);
-        }
-    };
     
     if (!result) return null;
     
@@ -540,7 +546,7 @@ const ScannerPage = () => {
             const finalResult = {
                 category: wasteClassification.category,
                 detectedItem: wasteClassification.detectedItem,
-                confidence: (wasteClassification.confidence * 100).toFixed(1),
+                confidence: Math.min(parseFloat(wasteClassification.confidence * 100), 100).toFixed(1),
                 method: wasteClassification.method,
                 styles: wasteClassification.styles,
                 icon: wasteClassification.icon,
@@ -558,13 +564,13 @@ const ScannerPage = () => {
                     const { data: updatedUser } = await api.post('/api/users/add-points', {}, config);
                     updateUser(updatedUser);
                     
-                    const historyData = {
-                        item: `Classified as ${finalResult.category} (${finalResult.method})`, 
-                        category: finalResult.category,
-                        confidence: finalResult.confidence,
-                        method: finalResult.method,
-                        detectedItem: finalResult.detectedItem
-                    };
+                const historyData = {
+                    item: `Classified as ${finalResult.category} (${finalResult.method})`, 
+                    category: finalResult.category,
+                    confidence: parseFloat(finalResult.confidence), 
+                    method: finalResult.method || 'Enhanced MobileNet v2',
+                    detectedItem: finalResult.detectedItem
+                };
                     
                     await api.post('/api/history', historyData, config);
                 } catch (pointError) {
