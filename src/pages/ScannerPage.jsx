@@ -485,6 +485,7 @@ const FeedbackSystem = ({ result, onFeedback, userInfo }) => {
     );
 };
 
+
 const ScannerPage = () => {
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState('');
