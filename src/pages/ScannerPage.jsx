@@ -18,7 +18,7 @@ const RecycleIcon = () => (
 
 const WarningIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732 3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
     </svg>
 );
 
@@ -43,18 +43,26 @@ const UnknownIcon = () => (
 const enhanceImage = (imageElement) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
     canvas.width = 224;
     canvas.height = 224;
     
+    // Fill background with white (not black bars)
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, 224, 224);
+    
+    // Calculate scale to fit image without distortion
+    const scale = Math.min(224 / imageElement.width, 224 / imageElement.height);
+    const x = (224 - imageElement.width * scale) / 2;
+    const y = (224 - imageElement.height * scale) / 2;
+    
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    
-    ctx.drawImage(imageElement, 0, 0, 224, 224);
+    ctx.drawImage(imageElement, x, y, imageElement.width * scale, imageElement.height * scale);
     
     return canvas;
 };
 
+// Load MobileNet model
 const loadAdvancedMobileNet = async () => {
     try {
         const model = await mobilenet.load({
@@ -68,6 +76,7 @@ const loadAdvancedMobileNet = async () => {
     }
 };
 
+// Get predictions from model
 const superEnhancedClassify = async (model, imageElement) => {
     try {
         const enhancedCanvas = enhanceImage(imageElement);
@@ -86,9 +95,25 @@ const superEnhancedClassify = async (model, imageElement) => {
     }
 };
 
+const fuzzyMatch = (text, keyword) => {
+    const t = text.toLowerCase();
+    const k = keyword.toLowerCase();
+    
+    if (t.includes(k)) return true;
+    if (t.includes(k + 's') || t.includes(k + 'es')) return true;
+    if (k.endsWith('s') && t.includes(k.slice(0, -1))) return true;
+    
+    return false;
+};
+
+const containsAnyKeyword = (text, keywords) => {
+    return keywords.some(keyword => fuzzyMatch(text, keyword));
+};
+
 const learningEnhancedClassify = async (model, imageElement) => {
     const predictions = await superEnhancedClassify(model, imageElement);
     
+    // Try to get learning data for top 3 predictions
     for (let i = 0; i < Math.min(predictions.length, 3); i++) {
         const prediction = predictions[i];
         const detectedItem = prediction.className.toLowerCase();
@@ -106,12 +131,12 @@ const learningEnhancedClassify = async (model, imageElement) => {
                 return {
                     category: learningData.correctCategory,
                     confidence: learningConfidence,
-                    method: 'Learning Enhanced',  // ✅ FIXED - Generic name
+                    method: 'Learning Enhanced',
                     detectedItem: prediction.className,
                     styles: getCategoryStyles(learningData.correctCategory),
                     icon: getCategoryIcon(learningData.correctCategory),
                     description: getCategoryDescription(learningData.correctCategory, prediction.className) + 
-                              ` (Learned from ${learningData.frequency} user correction${learningData.frequency > 1 ? 's' : ''})`
+                              ` (Learned from ${learningData.frequency} correction${learningData.frequency > 1 ? 's' : ''})`
                 };
             }
         } catch (learningError) {
@@ -119,214 +144,81 @@ const learningEnhancedClassify = async (model, imageElement) => {
         }
     }
     
-    return await hybridSuperClassify(model, imageElement);
+    // If no learning data, use improved classification
+    return await improvedWasteClassification(predictions);
 };
 
-const advancedTextClassification = (predictions) => {
-    const wasteKeywords = {
+const improvedWasteClassification = async (predictions) => {
+    console.log('=== CLASSIFICATION START ===');
+    console.log('Top 5 predictions:', predictions.slice(0, 5).map(p => 
+        `${p.className} (${(p.probability * 100).toFixed(1)}%)`
+    ));
+
+    // Comprehensive waste category rules
+    const wasteRules = {
         'Wet Waste': {
-            primary: ['banana', 'apple', 'orange', 'fruit', 'vegetable', 'food', 'organic', 'bread', 'meat', 'pizza', 'cake'],
-            secondary: ['sandwich', 'soup', 'salad', 'rice', 'pasta', 'cookie', 'bagel', 'pretzel', 'taco', 'burger'],
-            tertiary: ['snack', 'meal', 'dinner', 'lunch', 'breakfast', 'dish', 'plate'],
-            multiplier: 1.5
+            highPriority: [
+                'banana', 'apple', 'orange', 'strawberry', 'pineapple', 'lemon', 'grape', 'mango',
+                'peach', 'pear', 'plum', 'cherry', 'watermelon', 'melon', 'papaya', 'avocado',
+                'carrot', 'broccoli', 'cucumber', 'tomato', 'potato', 'onion', 'pepper', 'lettuce',
+                'pizza', 'burger', 'sandwich', 'bread', 'meat', 'fish', 'egg', 'cheese'
+            ],
+            mediumPriority: [
+                'salad', 'soup', 'meal', 'snack', 'food', 'fruit', 'vegetable', 'organic', 'plant'
+            ],
+            exclusions: ['bottle', 'container', 'plastic', 'metal', 'glass', 'phone', 'computer', 'bag'],
+            weight: 2.0
         },
         'Dry Waste': {
-            primary: ['bottle', 'can', 'plastic', 'glass', 'paper', 'metal', 'container', 'box', 'aluminum', 'steel'],
-            secondary: ['cup', 'jar', 'bag', 'cardboard', 'packaging', 'wrapper', 'carton', 'tin', 'foil'],
-            tertiary: ['recyclable', 'material', 'waste', 'trash', 'garbage'],
-            multiplier: 1.4
+            highPriority: [
+                'bottle', 'can', 'jar', 'glass', 'plastic', 'metal', 'aluminum', 'steel',
+                'paper', 'cardboard', 'box', 'carton', 'container', 'wrapper', 'bag'
+            ],
+            mediumPriority: [
+                'cup', 'plate', 'packaging', 'tin', 'foil', 'crate', 'basket', 'bucket'
+            ],
+            exclusions: ['phone', 'computer', 'electronic', 'battery', 'syringe', 'medical', 'needle'],
+            weight: 1.5
         },
         'E-waste': {
-            primary: ['phone', 'computer', 'electronic', 'battery', 'device', 'digital', 'camera', 'laptop', 'tablet'],
-            secondary: ['monitor', 'keyboard', 'mouse', 'charger', 'cable', 'circuit', 'processor', 'chip'],
-            tertiary: ['technology', 'gadget', 'equipment', 'machine', 'appliance'],
-            multiplier: 1.6
+            highPriority: [
+                'phone', 'computer', 'laptop', 'monitor', 'keyboard', 'mouse', 'camera',
+                'television', 'radio', 'battery', 'charger', 'electronic', 'device',
+                // CRITICAL: Vehicles belong here!
+                'scooter', 'motorcycle', 'bike', 'bicycle', 'moped', 'vehicle', 'motor'
+            ],
+            mediumPriority: [
+                'tablet', 'speaker', 'headphone', 'microwave', 'appliance', 'gadget', 'remote'
+            ],
+            exclusions: ['toy', 'game', 'doll'],
+            weight: 2.0
         },
         'Hazardous Waste': {
-            primary: ['chemical', 'paint', 'oil', 'toxic', 'hazardous', 'lighter', 'spray', 'aerosol'],
-            secondary: ['cleaner', 'solvent', 'pesticide', 'fuel', 'gas', 'acid', 'bleach'],
-            tertiary: ['dangerous', 'harmful', 'poison', 'flammable'],
-            multiplier: 1.3
+            highPriority: [
+                'battery', 'paint', 'chemical', 'oil', 'fuel', 'lighter', 'aerosol',
+                'toxic', 'poison', 'bleach', 'acid', 'solvent'
+            ],
+            mediumPriority: [
+                'cleaner', 'spray', 'flammable', 'pesticide', 'herbicide'
+            ],
+            exclusions: ['toy', 'food', 'fruit', 'vegetable', 'bottle'],
+            weight: 1.8
         },
         'Biomedical Waste': {
-            primary: ['medical', 'syringe', 'pill', 'medicine', 'hospital', 'pharmaceutical', 'drug'],
-            secondary: ['bandage', 'needle', 'surgical', 'vaccine', 'specimen', 'laboratory'],
-            tertiary: ['health', 'clinical', 'therapy', 'treatment'],
-            multiplier: 1.4
-        }
-    };
-
-    let categoryScores = {};
-    Object.keys(wasteKeywords).forEach(category => {
-        categoryScores[category] = 0;
-    });
-
-    for (let i = 0; i < Math.min(predictions.length, 8); i++) {
-        const prediction = predictions[i];
-        const className = prediction.className.toLowerCase();
-        const confidence = prediction.probability;
-        const positionWeight = Math.max(0.5, 1 - (i * 0.08));
-        const baseScore = confidence * positionWeight;
-
-        Object.keys(wasteKeywords).forEach(category => {
-            const keywords = wasteKeywords[category];
-            let categoryScore = 0;
-
-            keywords.primary.forEach(keyword => {
-                if (className.includes(keyword)) {
-                    categoryScore += baseScore * keywords.multiplier;
-                }
-            });
-
-            keywords.secondary.forEach(keyword => {
-                if (className.includes(keyword)) {
-                    categoryScore += baseScore * (keywords.multiplier * 0.7);
-                }
-            });
-
-            keywords.tertiary.forEach(keyword => {
-                if (className.includes(keyword)) {
-                    categoryScore += baseScore * (keywords.multiplier * 0.4);
-                }
-            });
-
-            categoryScores[category] += categoryScore;
-        });
-    }
-
-    const bestCategory = Object.keys(categoryScores).reduce((a, b) => 
-        categoryScores[a] > categoryScores[b] ? a : b
-    );
-    const bestScore = categoryScores[bestCategory];
-
-    return {
-        category: bestCategory,
-        confidence: Math.min(bestScore, 1.0),
-        method: 'Advanced Text Analysis',
-        scores: categoryScores
-    };
-};
-
-const hybridSuperClassify = async (model, imageElement) => {  
-    const predictions = await superEnhancedClassify(model, imageElement);
-    const traditionalResult = classifyWasteFromImageNet(predictions);
-    const advancedResult = advancedTextClassification(predictions);
-    
-    let finalResult;
-    
-    if (advancedResult.confidence > traditionalResult.confidence) {
-        finalResult = {
-            category: advancedResult.category,
-            confidence: advancedResult.confidence,
-            method: advancedResult.method,
-            detectedItem: predictions[0].className,
-            styles: getCategoryStyles(advancedResult.category),
-            icon: getCategoryIcon(advancedResult.category),
-            description: getCategoryDescription(advancedResult.category, predictions[0].className)
-        };
-    } else {
-        finalResult = {
-            ...traditionalResult,
-            method: 'Enhanced MobileNet v2'
-        };
-    }
-    
-    if (traditionalResult.category === advancedResult.category) {
-        finalResult.confidence = Math.min((finalResult.confidence + 0.15), 1.0);
-        finalResult.method = 'Hybrid Agreement';
-    }
-    return finalResult;
-};
-
-const classifyWasteFromImageNet = (predictions) => {
-    const wasteMapping = {
-        organic: {
-            exact: [
-                'banana', 'orange', 'apple', 'strawberry', 'pineapple', 'lemon', 'pomegranate', 'fig',
-                'avocado', 'cantaloupe', 'grapes', 'peach', 'pear', 'plum', 'cherry', 'coconut',
-                'papaya', 'mango', 'watermelon', 'honeydew', 'apricot', 'nectarine', 'jackfruit'
+            highPriority: [
+                'syringe', 'needle', 'medical', 'surgical', 'hospital', 'pharmaceutical',
+                'pill bottle', 'medicine', 'bandage', 'specimen'
             ],
-            vegetables: [
-                'bell pepper', 'cucumber', 'artichoke', 'corn', 'broccoli', 'mushroom', 'cauliflower',
-                'cabbage', 'carrot', 'onion', 'potato', 'sweet potato', 'butternut squash', 'acorn squash',
-                'zucchini', 'spaghetti squash', 'head cabbage', 'red cabbage'
+            mediumPriority: [
+                'clinical', 'health', 'therapy', 'vaccine'
             ],
-            food: [
-                'bagel', 'pizza', 'burrito', 'hot dog', 'cheeseburger', 'french fries', 'pretzel',
-                'ice cream', 'chocolate sauce', 'popcorn', 'meat loaf', 'sushi', 'guacamole',
-                'consomme', 'hot pot', 'trifle', 'ice lolly', 'wedding cake', 'chocolate chip cookie'
+            exclusions: [
+                'scooter', 'bike', 'vehicle', 'motorcycle', 'car', 'moped',
+                'furniture', 'chair', 'table', 'desk', 'shelf',
+                'crate', 'basket', 'container', 'box', 'bucket', 'pail',
+                'toy', 'game', 'doll', 'ball'
             ],
-            indicators: ['fruit', 'vegetable', 'food', 'meal', 'snack', 'organic', 'bread', 'cake', 'meat']
-        },
-        recyclable: {
-            glass: [
-                'wine bottle', 'beer bottle', 'water bottle', 'pop bottle', 'pill bottle',
-                'perfume', 'lotion', 'beer glass', 'wine glass', 'cocktail shaker', 'pitcher',
-                'vase', 'goblet', 'shot glass', 'measuring cup'
-            ],
-            metal: [
-                'can opener', 'bottle opener', 'corkscrew', 'ladle', 'spatula', 'whisk', 'strainer',
-                'colander', 'frying pan', 'wok', 'pot', 'dutch oven', 'pressure cooker', 'coffeepot',
-                'teapot', 'caldron', 'stockpot', 'steel drum', 'bucket', 'pail'
-            ],
-            paper: [
-                'book jacket', 'envelope', 'menu', 'newspaper', 'crossword puzzle', 'jigsaw puzzle',
-                'comic book', 'paper towel', 'tissue', 'toilet tissue'
-            ],
-            plastic: [
-                'plastic bag', 'shopping basket', 'hamper', 'box', 'carton', 'crate', 'basket',
-                'container', 'tub', 'bucket', 'pail', 'washbasin', 'bathtub'
-            ],
-            indicators: ['bottle', 'container', 'can', 'jar', 'box', 'bag', 'cup', 'glass', 'metal', 'aluminum', 'steel', 'plastic', 'paper']
-        },
-        electronic: {
-            computing: [
-                'desktop computer', 'notebook', 'laptop', 'monitor', 'screen', 'keyboard', 'computer keyboard',
-                'mouse', 'computer mouse', 'joystick', 'trackball', 'printer', 'web site', 'modem'
-            ],
-            mobile: [
-                'cellular telephone', 'phone', 'dial telephone', 'pay-phone', 'handset'
-            ],
-            entertainment: [
-                'television', 'home theater', 'projector', 'radio', 'tape player', 'cd player',
-                'ipod', 'cassette player', 'tape player', 'radio telescope', 'loudspeaker'
-            ],
-            cameras: [
-                'reflex camera', 'polaroid camera', 'digital camera', 'photographic equipment'
-            ],
-            small: [
-                'calculator', 'digital clock', 'analog clock', 'stopwatch', 'timer', 'digital watch',
-                'remote control', 'hand-held computer', 'pda', 'electronic device'
-            ],
-            indicators: ['electronic', 'digital', 'computer', 'phone', 'camera', 'device', 'gadget', 'battery', 'charger']
-        },
-        hazardous: {
-            chemicals: [
-                'medicine chest', 'pill bottle', 'perfume', 'lotion', 'soap dispenser', 
-                'spray', 'aerosol', 'fire extinguisher'
-            ],
-            automotive: [
-                'car wheel', 'tire', 'hubcap', 'motor scooter', 'moped', 'unicycle'
-            ],
-            flammable: [
-                'lighter', 'torch', 'candle', 'oil lamp', 'spotlight', 'flashlight'
-            ],
-            paint: [
-                'paintbrush', 'palette knife', 'spray gun'
-            ],
-            indicators: ['chemical', 'oil', 'fuel', 'acid', 'toxic', 'flammable', 'hazardous', 'battery', 'lighter']
-        },
-        medical: {
-            instruments: [
-                'syringe', 'stethoscope', 'reflex hammer', 'hypodermic needle'
-            ],
-            containers: [
-                'pill bottle', 'medicine chest', 'oxygen mask'
-            ],
-            equipment: [
-                'stretcher', 'hospital bed', 'medical equipment'
-            ],
-            indicators: ['medical', 'syringe', 'needle', 'pill', 'medicine', 'hospital', 'surgical', 'pharmaceutical']
+            weight: 1.5
         }
     };
 
@@ -338,158 +230,118 @@ const classifyWasteFromImageNet = (predictions) => {
         'Biomedical Waste': 0
     };
 
+    // Process all predictions
     for (let i = 0; i < Math.min(predictions.length, 10); i++) {
-        const prediction = predictions[i];
-        const className = prediction.className.toLowerCase();
-        const confidence = prediction.probability;
+        const pred = predictions[i];
+        const label = pred.className;
+        const confidence = pred.probability;
         
-        const positionWeight = Math.max(0.3, 1 - (i * 0.07));
+        // Position weight: earlier predictions matter more
+        const positionWeight = Math.max(0.3, 1.0 - (i * 0.08));
         const baseScore = confidence * positionWeight;
 
-        let organicScore = 0;
-        if (wasteMapping.organic.exact.some(item => className.includes(item))) {
-            organicScore = baseScore * 1.4;
-        } else if (wasteMapping.organic.vegetables.some(item => className.includes(item))) {
-            organicScore = baseScore * 1.2;  
-        } else if (wasteMapping.organic.food.some(item => className.includes(item))) {
-            organicScore = baseScore * 1.2;
-        } else if (wasteMapping.organic.indicators.some(indicator => className.includes(indicator))) {
-            organicScore = baseScore * 0.9;
-        }
+        // Check each waste category
+        for (const [category, rules] of Object.entries(wasteRules)) {
+            
+            // Step 1: Check exclusions first
+            if (containsAnyKeyword(label, rules.exclusions)) {
+                if (i < 3) console.log(`  ❌ ${label} excluded from ${category}`);
+                continue;
+            }
 
-        let recyclableScore = 0;
-        if (wasteMapping.recyclable.glass.some(item => className.includes(item))) {
-            recyclableScore = baseScore * 1.4;
-        } else if (wasteMapping.recyclable.metal.some(item => className.includes(item))) {
-            recyclableScore = baseScore * 1.4;
-        } else if (wasteMapping.recyclable.paper.some(item => className.includes(item))) {
-            recyclableScore = baseScore * 1.2;
-        } else if (wasteMapping.recyclable.plastic.some(item => className.includes(item))) {
-            recyclableScore = baseScore * 1.1;
-        } else if (wasteMapping.recyclable.indicators.some(indicator => className.includes(indicator))) {
-            recyclableScore = baseScore * 0.9;
-        }
+            // Step 2: Check high priority keywords
+            if (containsAnyKeyword(label, rules.highPriority)) {
+                const score = baseScore * rules.weight * 1.5;
+                categoryScores[category] += score;
+                if (i < 3) console.log(`  ✓✓ ${label} → ${category} (HIGH): +${score.toFixed(3)}`);
+                continue;
+            }
 
-        let electronicScore = 0;
-        if (wasteMapping.electronic.computing.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.5;
-        } else if (wasteMapping.electronic.mobile.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.5;
-        } else if (wasteMapping.electronic.entertainment.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.4;
-        } else if (wasteMapping.electronic.cameras.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.4;
-        } else if (wasteMapping.electronic.small.some(item => className.includes(item))) {
-            electronicScore = baseScore * 1.2;
-        } else if (wasteMapping.electronic.indicators.some(indicator => className.includes(indicator))) {
-            electronicScore = baseScore * 1.0;
+            // Step 3: Check medium priority keywords
+            if (containsAnyKeyword(label, rules.mediumPriority)) {
+                const score = baseScore * rules.weight;
+                categoryScores[category] += score;
+                if (i < 3) console.log(`  ✓ ${label} → ${category} (MED): +${score.toFixed(3)}`);
+            }
         }
-
-        let hazardousScore = 0;
-        if (wasteMapping.hazardous.chemicals.some(item => className.includes(item))) {
-            hazardousScore = baseScore * 1.2;
-        } else if (wasteMapping.hazardous.automotive.some(item => className.includes(item))) {
-            hazardousScore = baseScore * 1.0;
-        } else if (wasteMapping.hazardous.flammable.some(item => className.includes(item))) {
-            hazardousScore = baseScore * 1.3;
-        } else if (wasteMapping.hazardous.paint.some(item => className.includes(item))) {
-            hazardousScore = baseScore * 1.1;
-        } else if (wasteMapping.hazardous.indicators.some(indicator => className.includes(indicator))) {
-            hazardousScore = baseScore * 0.9;
-        }
-
-        let medicalScore = 0;
-        if (wasteMapping.medical.instruments.some(item => className.includes(item))) {
-            medicalScore = baseScore * 1.5;
-        } else if (wasteMapping.medical.containers.some(item => className.includes(item))) {
-            medicalScore = baseScore * 1.1;
-        } else if (wasteMapping.medical.equipment.some(item => className.includes(item))) {
-            medicalScore = baseScore * 1.2;
-        } else if (wasteMapping.medical.indicators.some(indicator => className.includes(indicator))) {
-            medicalScore = baseScore * 1.0;
-        }
-
-        categoryScores['Wet Waste'] += organicScore;
-        categoryScores['Dry Waste'] += recyclableScore;  
-        categoryScores['E-waste'] += electronicScore;
-        categoryScores['Hazardous Waste'] += hazardousScore;
-        categoryScores['Biomedical Waste'] += medicalScore;
     }
 
-    const bestCategory = Object.keys(categoryScores).reduce((a, b) => 
-        categoryScores[a] > categoryScores[b] ? a : b
-    );
-    const bestCategoryScore = categoryScores[bestCategory];
+    console.log('Final scores:', Object.entries(categoryScores).map(([cat, s]) => 
+        `${cat}: ${(s * 100).toFixed(1)}%`
+    ));
 
-    if (bestCategoryScore < 0.15) {
+    // Find best category
+    let bestCategory = 'Dry Waste';
+    let bestScore = 0;
+
+    for (const [category, score] of Object.entries(categoryScores)) {
+        if (score > bestScore) {
+            bestScore = score;
+            bestCategory = category;
+        }
+    }
+
+    // Use fallback if confidence too low
+    if (bestScore < 0.15) {
+        console.log('⚠️ Low confidence, using fallback');
         return intelligentFallback(predictions[0]);
     }
 
-    const topPrediction = predictions[0];
+    console.log(`✅ Final: ${bestCategory} (${(bestScore * 100).toFixed(1)}%)`);
+    console.log('=== CLASSIFICATION END ===\n');
+
     return {
         category: bestCategory,
+        confidence: bestScore,
+        method: 'Improved Classification',
+        detectedItem: predictions[0].className,
         styles: getCategoryStyles(bestCategory),
         icon: getCategoryIcon(bestCategory),
-        description: getCategoryDescription(bestCategory, topPrediction.className),
-        detectedItem: topPrediction.className,
-        confidence: bestCategoryScore
+        description: getCategoryDescription(bestCategory, predictions[0].className)
     };
 };
 
 const intelligentFallback = (prediction) => {
     const className = prediction.className.toLowerCase();
     
-    if (className.includes('plastic') || className.includes('synthetic')) {
+    // Vehicles
+    if (className.includes('scooter') || className.includes('motorcycle') || 
+        className.includes('bike') || className.includes('vehicle') || 
+        className.includes('moped')) {
+        return {
+            category: 'E-waste',
+            styles: getCategoryStyles('E-waste'),
+            icon: getCategoryIcon('E-waste'),
+            description: 'Vehicle/bulky item (motor scooter). Requires special e-waste disposal.',
+            detectedItem: prediction.className,
+            confidence: 0.65,
+            method: 'Fallback - Vehicle Detection'
+        };
+    }
+    
+    // Recyclables
+    if (className.includes('plastic') || className.includes('bottle') || 
+        className.includes('can') || className.includes('glass')) {
         return {
             category: 'Dry Waste',
-            styles: 'bg-blue-50 border-blue-500 text-blue-800',
-            icon: <RecycleIcon />,
-            description: 'Plastic item. Most plastics are recyclable.',
+            styles: getCategoryStyles('Dry Waste'),
+            icon: getCategoryIcon('Dry Waste'),
+            description: `Likely recyclable (${prediction.className}). Clean before disposal.`,
             detectedItem: prediction.className,
-            confidence: prediction.probability
+            confidence: 0.60,
+            method: 'Fallback - Recyclable Detection'
         };
     }
     
-    if (className.includes('metal') || className.includes('steel') || className.includes('aluminum')) {
-        return {
-            category: 'Dry Waste', 
-            styles: 'bg-blue-50 border-blue-500 text-blue-800',
-            icon: <RecycleIcon />,
-            description: 'Metal item. Metals are recyclable.',
-            detectedItem: prediction.className,
-            confidence: prediction.probability
-        };
-    }
-    
-    if (className.includes('glass') || className.includes('crystal')) {
-        return {
-            category: 'Dry Waste',
-            styles: 'bg-blue-50 border-blue-500 text-blue-800', 
-            icon: <RecycleIcon />,
-            description: 'Glass item. Clean before recycling.',
-            detectedItem: prediction.className,
-            confidence: prediction.probability
-        };
-    }
-    
-    if (className.includes('wood') || className.includes('organic')) {
-        return {
-            category: 'Wet Waste',
-            styles: 'bg-green-50 border-green-500 text-green-800',
-            icon: <LeafIcon />,
-            description: 'Organic material. Can be composted.',
-            detectedItem: prediction.className,
-            confidence: prediction.probability
-        };
-    }
-
+    // Safe default
     return {
         category: 'Dry Waste',
-        styles: 'bg-blue-50 border-blue-500 text-blue-800',
-        icon: <RecycleIcon />, 
-        description: 'Most household items are recyclable. Check local guidelines.',
+        styles: getCategoryStyles('Dry Waste'),
+        icon: getCategoryIcon('Dry Waste'),
+        description: `Classification uncertain (${prediction.className}). Most household items are recyclable.`,
         detectedItem: prediction.className,
-        confidence: prediction.probability
+        confidence: 0.50,
+        method: 'Fallback - Safe Default'
     };
 };
 
@@ -512,14 +364,14 @@ const getCategoryIcon = (category) => {
         'Hazardous Waste': <WarningIcon />,
         'Biomedical Waste': <BiohazardIcon />
     };
-    return icons[category];
+    return icons[category] || <UnknownIcon />;
 };
 
 const getCategoryDescription = (category, detectedItem) => {
     const descriptions = {
         'Wet Waste': `Organic waste (${detectedItem}). Perfect for composting.`,
         'Dry Waste': `Recyclable material (${detectedItem}). Clean before disposal.`,
-        'E-waste': `Electronic waste (${detectedItem}). Take to e-waste collection points.`,
+        'E-waste': `Electronic/bulky waste (${detectedItem}). Take to e-waste collection points.`,
         'Hazardous Waste': `Hazardous material (${detectedItem}). Requires special disposal.`,
         'Biomedical Waste': `Medical waste (${detectedItem}). Contact health authorities.`
     };
@@ -653,7 +505,7 @@ const ScannerPage = () => {
                 await tf.ready();
                 
                 model.current = await loadAdvancedMobileNet();
-                setModelStatus('🎉 Advanced AI Ready! (Learning Enabled)');
+                setModelStatus('🎉 Advanced AI Ready! (Improved Classification)');
             } catch (err) {
                 setModelStatus('⚡ AI Ready! (Fallback Mode)');
                 setError('Could not load the advanced AI model. Using fallback mode.');
@@ -698,6 +550,7 @@ const ScannerPage = () => {
 
             setResult(finalResult);
 
+            // Add points and save history (Your original features)
             if (userInfo) {
                 const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
                 try {
@@ -720,11 +573,12 @@ const ScannerPage = () => {
                             category: finalResult.category 
                         }, config);
                     } catch (fallbackError) {
-                        console.error("All history logging failed:", fallbackError);
+                        console.error("History logging failed:", fallbackError);
                     }
                 }
             }
         } catch (err) {
+            console.error('Classification error:', err);
             setError('Could not classify the image. Please try another one.');
         } finally {
             setLoading(false);
@@ -735,7 +589,7 @@ const ScannerPage = () => {
         <div className="container mx-auto max-w-2xl py-8 px-4 sm:px-6 animate-fadeIn">
             <div className="text-center">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-800">Scan Your Waste</h1>
-                <p className="text-md sm:text-lg text-gray-600 mt-2">AI with Learning System - Gets Smarter with Feedback!</p>
+                <p className="text-md sm:text-lg text-gray-600 mt-2">AI with Learning System - Improved Classification!</p>
                 <p className={`text-sm mt-1 font-semibold ${modelStatus.includes('Ready') ? 'text-green-600' : 'text-yellow-600'}`}>
                     {modelStatus}
                 </p>
@@ -815,6 +669,11 @@ const ScannerPage = () => {
                         )}
                     </div>
                 )}
+            </div>
+
+            <div className="mt-6 text-center text-sm text-gray-500">
+                <p>💡 Tip: Take clear, well-lit photos for best results</p>
+                <p className="mt-1">🔍 Open browser console (F12) to see detailed classification logs</p>
             </div>
         </div>
     );

@@ -25,7 +25,7 @@ import LeaderboardPage from './pages/Leaderboard.jsx';
 import AdminAnalyticsPage from './pages/AdminAnalytics.jsx'; 
 import ArticlesPage from './pages/Articles.jsx';
 import ArticleDetailPage from './pages/ArticleDetail.jsx';
-import ForgotPasswordPage from './pages/forgotPage.jsx'; // 1. Import new pages
+import ForgotPasswordPage from './pages/forgotPage.jsx'; 
 import ResetPasswordPage from './pages/resetPage.jsx';
 
 import { AuthProvider } from './context/AuthContext.jsx';
