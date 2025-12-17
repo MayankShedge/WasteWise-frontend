@@ -24,9 +24,7 @@ const ExternalLink = () => (
 );
 
 const ArticlesPage = () => {
-    // ====================================
-    // ORIGINAL LOGIC - NO CHANGES
-    // ====================================
+
     const [articles, setArticles] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -44,9 +42,6 @@ const ArticlesPage = () => {
         fetchArticles();
     }, []);
 
-    // ====================================
-    // CAROUSEL FUNCTIONALITY - NEW
-    // ====================================
     const [currentIndex, setCurrentIndex] = useState(0);
     const [touchStart, setTouchStart] = useState(0);
     const [touchEnd, setTouchEnd] = useState(0);
@@ -100,14 +95,10 @@ const ArticlesPage = () => {
         return () => window.removeEventListener('keydown', handleKeyPress);
     }, [goToNext, goToPrev]);
 
-    // ====================================
-    // ORIGINAL LOADING - NO CHANGES
-    // ====================================
+
     if (loading) return <p className="text-center p-8">Loading articles...</p>;
 
-    // ====================================
-    // ORIGINAL EMPTY STATE - NO CHANGES
-    // ====================================
+
     if (articles.length === 0) {
         return (
             <div className="container mx-auto py-8 px-4 sm:px-6">
