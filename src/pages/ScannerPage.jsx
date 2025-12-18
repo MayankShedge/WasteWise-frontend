@@ -45,20 +45,17 @@ const enhanceImage = (imageElement) => {
     const ctx = canvas.getContext('2d');
     canvas.width = 224;
     canvas.height = 224;
-    
-    // Fill background with white (not black bars)
+
+    // White background
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, 224, 224);
-    
-    // Calculate scale to fit image without distortion
+
+    // Maintain aspect ratio
     const scale = Math.min(224 / imageElement.width, 224 / imageElement.height);
     const x = (224 - imageElement.width * scale) / 2;
     const y = (224 - imageElement.height * scale) / 2;
-    
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+
     ctx.drawImage(imageElement, x, y, imageElement.width * scale, imageElement.height * scale);
-    
     return canvas;
 };
 
@@ -404,14 +401,14 @@ const Spinner = () => (
             const feedback = {
                 originalResult: {
                     category: result.category,
-                    confidence: cleanConfidence,
-                    method: result.method,
+                    confidence: Math.min(parseFloat(result.confidence), 100), // Number, max 100
+                    method: allowedMethods.includes(result.method) ? result.method : 'Legacy',
                     detectedItem: result.detectedItem 
                 },
                 userSaysCorrect: isCorrect,
-                userCorrection: isCorrect ? result.category : correction,
+                userCorrection: isCorrect ? result.category : (correction || result.category),
                 imageMetadata: {
-                    size: null, 
+                    size: 0,
                     type: "image/jpeg",
                     dimensions: { width: 224, height: 224 }
                 }
@@ -535,6 +532,19 @@ const ScannerPage = () => {
     };
 
     const handleClassify = async () => {
+
+        const allowedMethods = [
+            'Enhanced MobileNet v2', 
+            'Advanced Text Analysis', 
+            'Hybrid Agreement', 
+            'Learning Enhanced',
+            'Improved Classification',
+            'Fallback - Vehicle Detection',
+            'Fallback - Recyclable Detection',
+            'Fallback - Safe Default',
+            'Legacy'
+        ];
+
         if (!file || !model.current || !imageRef.current) return;
         setLoading(true);
         setError('');
@@ -561,16 +571,21 @@ const ScannerPage = () => {
             if (userInfo) {
                 const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
                 try {
+
+                    const safeMethod = allowedMethods.includes(finalResult.method) 
+                    ? finalResult.method 
+                    : 'Legacy';
+
                     const { data: updatedUser } = await api.post('/api/users/add-points', {}, config);
                     updateUser(updatedUser);
                     
-                const historyData = {
-                    item: `Classified as ${finalResult.category} (${finalResult.method})`, 
-                    category: finalResult.category,
-                    confidence: parseFloat(finalResult.confidence), 
-                    method: finalResult.method || 'Enhanced MobileNet v2',
-                    detectedItem: finalResult.detectedItem
-                };
+                    const historyData = {
+                        item: `Classified as ${finalResult.category}`, 
+                        category: finalResult.category,
+                        confidence: Math.min(parseFloat(finalResult.confidence), 100), 
+                        method: safeMethod, 
+                        detectedItem: finalResult.detectedItem
+                    };
                     
                     await api.post('/api/history', historyData, config);
                 } catch (pointError) {
