@@ -395,15 +395,26 @@ const Spinner = () => (
             }
             setSubmitting(true);
             
-            // Ensure confidence is a clean number between 0-100
             const cleanConfidence = Math.min(Math.max(parseFloat(result.confidence), 0), 100);
+
+            const allowedMethods = [
+                'Enhanced MobileNet v2',
+                'Advanced Text Analysis',
+                'Hybrid Agreement',
+                'Learning Enhanced',
+                'Improved Classification',
+                'Fallback - Vehicle Detection',
+                'Fallback - Recyclable Detection',
+                'Fallback - Safe Default',
+                'Legacy'
+            ];
 
             const feedback = {
                 originalResult: {
                     category: result.category,
-                    confidence: Math.min(parseFloat(result.confidence), 100), // Number, max 100
+                    confidence: Math.min(parseFloat(result.confidence) || 0, 100),
                     method: allowedMethods.includes(result.method) ? result.method : 'Legacy',
-                    detectedItem: result.detectedItem 
+                    detectedItem: result.detectedItem || 'Unknown'  // ✅ FALLBACK added
                 },
                 userSaysCorrect: isCorrect,
                 userCorrection: isCorrect ? result.category : (correction || result.category),
