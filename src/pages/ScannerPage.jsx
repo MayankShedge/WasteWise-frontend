@@ -40,44 +40,84 @@ const UnknownIcon = () => (
     </svg>
 );
 
+
+const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 const enhanceImage = (imageElement) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     canvas.width = 224;
     canvas.height = 224;
 
-    // White background
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, 224, 224);
 
-    // Maintain aspect ratio
     const scale = Math.min(224 / imageElement.width, 224 / imageElement.height);
     const x = (224 - imageElement.width * scale) / 2;
     const y = (224 - imageElement.height * scale) / 2;
 
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
     ctx.drawImage(imageElement, x, y, imageElement.width * scale, imageElement.height * scale);
+    
+    if (isMobileDevice()) {
+        console.log('📱 Mobile device detected - using enhanced preprocessing');
+        console.log('Image dimensions:', imageElement.width, 'x', imageElement.height);
+        console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+    }
+    
     return canvas;
 };
 
-// Load MobileNet model
+
 const loadAdvancedMobileNet = async () => {
     try {
+        if (isMobileDevice()) {
+            console.log('📱 Mobile detected - checking TensorFlow backend...');
+            await tf.ready();
+            const backend = tf.getBackend();
+            console.log('Current TF backend:', backend);
+            
+            if (backend !== 'webgl') {
+                console.log('Attempting to set WebGL backend...');
+                try {
+                    await tf.setBackend('webgl');
+                } catch (e) {
+                    console.log('WebGL not available, using CPU backend');
+                    await tf.setBackend('cpu');
+                }
+            }
+        }
+        
         const model = await mobilenet.load({
             version: 2,
             alpha: 1.0,
             inputRange: [0, 1]
         });
+        
+        console.log('✅ MobileNet loaded successfully');
         return model;
     } catch (error) {
+        console.error('Model loading error:', error);
         return await mobilenet.load();
     }
 };
 
-// Get predictions from model
 const superEnhancedClassify = async (model, imageElement) => {
     try {
         const enhancedCanvas = enhanceImage(imageElement);
-        const predictions = await model.classify(enhancedCanvas, 10);
+        
+        // Get more predictions on mobile for better accuracy
+        const numPredictions = isMobileDevice() ? 15 : 10;
+        const predictions = await model.classify(enhancedCanvas, numPredictions);
+        
+        // Log predictions for debugging
+        console.log('🔍 Top predictions:', predictions.slice(0, 5).map(p => 
+            `${p.className} (${(p.probability * 100).toFixed(1)}%)`
+        ));
         
         const processedPredictions = predictions.map((pred, index) => ({
             className: pred.className,
@@ -88,6 +128,7 @@ const superEnhancedClassify = async (model, imageElement) => {
         
         return processedPredictions;
     } catch (error) {
+        console.error('Classification error:', error);
         return await model.classify(imageElement, 5);
     }
 };
@@ -95,11 +136,9 @@ const superEnhancedClassify = async (model, imageElement) => {
 const fuzzyMatch = (text, keyword) => {
     const t = text.toLowerCase();
     const k = keyword.toLowerCase();
-    
     if (t.includes(k)) return true;
     if (t.includes(k + 's') || t.includes(k + 'es')) return true;
     if (k.endsWith('s') && t.includes(k.slice(0, -1))) return true;
-    
     return false;
 };
 
@@ -110,7 +149,6 @@ const containsAnyKeyword = (text, keywords) => {
 const learningEnhancedClassify = async (model, imageElement) => {
     const predictions = await superEnhancedClassify(model, imageElement);
     
-    // Try to get learning data for top 3 predictions
     for (let i = 0; i < Math.min(predictions.length, 3); i++) {
         const prediction = predictions[i];
         const detectedItem = prediction.className.toLowerCase();
@@ -141,17 +179,13 @@ const learningEnhancedClassify = async (model, imageElement) => {
         }
     }
     
-    // If no learning data, use improved classification
     return await improvedWasteClassification(predictions);
 };
 
 const improvedWasteClassification = async (predictions) => {
-    // console.log('=== CLASSIFICATION START ===');
-    // console.log('Top 5 predictions:', predictions.slice(0, 5).map(p => 
-    //     `${p.className} (${(p.probability * 100).toFixed(1)}%)`
-    // ));
+    console.log('=== CLASSIFICATION START ===');
+    console.log('Device:', isMobileDevice() ? '📱 Mobile' : '💻 Desktop');
 
-    // Comprehensive waste category rules
     const wasteRules = {
         'Wet Waste': {
             highPriority: [
@@ -163,7 +197,7 @@ const improvedWasteClassification = async (predictions) => {
             mediumPriority: [
                 'salad', 'soup', 'meal', 'snack', 'food', 'fruit', 'vegetable', 'organic', 'plant'
             ],
-            exclusions: ['bottle', 'container', 'plastic', 'metal', 'glass', 'phone', 'computer', 'bag'],
+            exclusions: ['bottle', 'container', 'plastic', 'metal', 'glass', 'phone', 'computer', 'bag', 'crate'],
             weight: 2.0
         },
         'Dry Waste': {
@@ -172,7 +206,7 @@ const improvedWasteClassification = async (predictions) => {
                 'paper', 'cardboard', 'box', 'carton', 'container', 'wrapper', 'bag'
             ],
             mediumPriority: [
-                'cup', 'plate', 'packaging', 'tin', 'foil', 'crate', 'basket', 'bucket'
+                'cup', 'plate', 'packaging', 'tin', 'foil', 'basket', 'bucket'
             ],
             exclusions: ['phone', 'computer', 'electronic', 'battery', 'syringe', 'medical', 'needle'],
             weight: 1.5
@@ -181,13 +215,12 @@ const improvedWasteClassification = async (predictions) => {
             highPriority: [
                 'phone', 'computer', 'laptop', 'monitor', 'keyboard', 'mouse', 'camera',
                 'television', 'radio', 'battery', 'charger', 'electronic', 'device',
-                // CRITICAL: Vehicles belong here!
                 'scooter', 'motorcycle', 'bike', 'bicycle', 'moped', 'vehicle', 'motor'
             ],
             mediumPriority: [
                 'tablet', 'speaker', 'headphone', 'microwave', 'appliance', 'gadget', 'remote'
             ],
-            exclusions: ['toy', 'game', 'doll'],
+            exclusions: ['toy', 'game', 'doll', 'crate'],
             weight: 2.0
         },
         'Hazardous Waste': {
@@ -198,7 +231,7 @@ const improvedWasteClassification = async (predictions) => {
             mediumPriority: [
                 'cleaner', 'spray', 'flammable', 'pesticide', 'herbicide'
             ],
-            exclusions: ['toy', 'food', 'fruit', 'vegetable', 'bottle'],
+            exclusions: ['toy', 'food', 'fruit', 'vegetable', 'bottle', 'crate'],
             weight: 1.8
         },
         'Biomedical Waste': {
@@ -227,26 +260,22 @@ const improvedWasteClassification = async (predictions) => {
         'Biomedical Waste': 0
     };
 
-    // Process all predictions
-    for (let i = 0; i < Math.min(predictions.length, 10); i++) {
+    const numToProcess = isMobileDevice() ? 12 : 10;
+    
+    for (let i = 0; i < Math.min(predictions.length, numToProcess); i++) {
         const pred = predictions[i];
         const label = pred.className;
         const confidence = pred.probability;
         
-        // Position weight: earlier predictions matter more
         const positionWeight = Math.max(0.3, 1.0 - (i * 0.08));
         const baseScore = confidence * positionWeight;
 
-        // Check each waste category
         for (const [category, rules] of Object.entries(wasteRules)) {
-            
-            // Step 1: Check exclusions first
             if (containsAnyKeyword(label, rules.exclusions)) {
                 if (i < 3) console.log(`  ❌ ${label} excluded from ${category}`);
                 continue;
             }
 
-            // Step 2: Check high priority keywords
             if (containsAnyKeyword(label, rules.highPriority)) {
                 const score = baseScore * rules.weight * 1.5;
                 categoryScores[category] += score;
@@ -254,7 +283,6 @@ const improvedWasteClassification = async (predictions) => {
                 continue;
             }
 
-            // Step 3: Check medium priority keywords
             if (containsAnyKeyword(label, rules.mediumPriority)) {
                 const score = baseScore * rules.weight;
                 categoryScores[category] += score;
@@ -267,7 +295,6 @@ const improvedWasteClassification = async (predictions) => {
         `${cat}: ${(s * 100).toFixed(1)}%`
     ));
 
-    // Find best category
     let bestCategory = 'Dry Waste';
     let bestScore = 0;
 
@@ -278,7 +305,6 @@ const improvedWasteClassification = async (predictions) => {
         }
     }
 
-    // Use fallback if confidence too low
     if (bestScore < 0.15) {
         console.log('⚠️ Low confidence, using fallback');
         return intelligentFallback(predictions[0]);
@@ -301,7 +327,6 @@ const improvedWasteClassification = async (predictions) => {
 const intelligentFallback = (prediction) => {
     const className = prediction.className.toLowerCase();
     
-    // Vehicles
     if (className.includes('scooter') || className.includes('motorcycle') || 
         className.includes('bike') || className.includes('vehicle') || 
         className.includes('moped')) {
@@ -309,14 +334,13 @@ const intelligentFallback = (prediction) => {
             category: 'E-waste',
             styles: getCategoryStyles('E-waste'),
             icon: getCategoryIcon('E-waste'),
-            description: 'Vehicle/bulky item (motor scooter). Requires special e-waste disposal.',
+            description: 'Vehicle/bulky item. Requires special e-waste disposal.',
             detectedItem: prediction.className,
             confidence: 0.65,
             method: 'Fallback - Vehicle Detection'
         };
     }
     
-    // Recyclables
     if (className.includes('plastic') || className.includes('bottle') || 
         className.includes('can') || className.includes('glass')) {
         return {
@@ -330,7 +354,6 @@ const intelligentFallback = (prediction) => {
         };
     }
     
-    // Safe default
     return {
         category: 'Dry Waste',
         styles: getCategoryStyles('Dry Waste'),
@@ -383,60 +406,58 @@ const Spinner = () => (
     </div>
 );
 
-    const FeedbackSystem = ({ result, onFeedback, userInfo }) => {
-        const [showFeedback, setShowFeedback] = useState(false);
-        const [userCorrection, setUserCorrection] = useState('');
-        const [submitting, setSubmitting] = useState(false);
+const FeedbackSystem = ({ result, onFeedback, userInfo }) => {
+    const [showFeedback, setShowFeedback] = useState(false);
+    const [userCorrection, setUserCorrection] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    
+    const submitFeedback = async (isCorrect, correction = null) => {
+        if (!userInfo) {
+            onFeedback('Please log in.');
+            return;
+        }
+        setSubmitting(true);
         
-        const submitFeedback = async (isCorrect, correction = null) => {
-            if (!userInfo) {
-                onFeedback('Please log in.');
-                return;
-            }
-            setSubmitting(true);
-            
-            const cleanConfidence = Math.min(Math.max(parseFloat(result.confidence), 0), 100);
+        const allowedMethods = [
+            'Enhanced MobileNet v2',
+            'Advanced Text Analysis',
+            'Hybrid Agreement',
+            'Learning Enhanced',
+            'Improved Classification',
+            'Fallback - Vehicle Detection',
+            'Fallback - Recyclable Detection',
+            'Fallback - Safe Default',
+            'Legacy'
+        ];
 
-            const allowedMethods = [
-                'Enhanced MobileNet v2',
-                'Advanced Text Analysis',
-                'Hybrid Agreement',
-                'Learning Enhanced',
-                'Improved Classification',
-                'Fallback - Vehicle Detection',
-                'Fallback - Recyclable Detection',
-                'Fallback - Safe Default',
-                'Legacy'
-            ];
-
-            const feedback = {
-                originalResult: {
-                    category: result.category,
-                    confidence: Math.min(parseFloat(result.confidence) || 0, 100),
-                    method: allowedMethods.includes(result.method) ? result.method : 'Legacy',
-                    detectedItem: result.detectedItem || 'Unknown'  // ✅ FALLBACK added
-                },
-                userSaysCorrect: isCorrect,
-                userCorrection: isCorrect ? result.category : (correction || result.category),
-                imageMetadata: {
-                    size: 0,
-                    type: "image/jpeg",
-                    dimensions: { width: 224, height: 224 }
-                }
-            };
-            
-            try {
-                const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-                await api.post('/api/feedback', feedback, config);
-                onFeedback('Success!');
-                setShowFeedback(false);
-            } catch (error) {
-                console.error("Feedback Error:", error.response?.data);
-                onFeedback(error.response?.data?.message || 'Error');
-            } finally {
-                setSubmitting(false);
+        const feedback = {
+            originalResult: {
+                category: result.category,
+                confidence: Math.min(parseFloat(result.confidence) || 0, 100),
+                method: allowedMethods.includes(result.method) ? result.method : 'Legacy',
+                detectedItem: result.detectedItem || 'Unknown'
+            },
+            userSaysCorrect: isCorrect,
+            userCorrection: isCorrect ? result.category : (correction || result.category),
+            imageMetadata: {
+                size: 0,
+                type: "image/jpeg",
+                dimensions: { width: 224, height: 224 }
             }
         };
+        
+        try {
+            const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+            await api.post('/api/feedback', feedback, config);
+            onFeedback('Success!');
+            setShowFeedback(false);
+        } catch (error) {
+            console.error("Feedback Error:", error.response?.data);
+            onFeedback(error.response?.data?.message || 'Error');
+        } finally {
+            setSubmitting(false);
+        }
+    };
     
     if (!result) return null;
     
@@ -499,7 +520,6 @@ const Spinner = () => (
     );
 };
 
-
 const ScannerPage = () => {
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState('');
@@ -520,7 +540,9 @@ const ScannerPage = () => {
                 await tf.ready();
                 
                 model.current = await loadAdvancedMobileNet();
-                setModelStatus('🎉 Advanced AI Ready! (Improved Classification)');
+                
+                const deviceType = isMobileDevice() ? '📱 Mobile' : '💻 Desktop';
+                setModelStatus(`🎉 AI Ready! (${deviceType})`);
             } catch (err) {
                 setModelStatus('⚡ AI Ready! (Fallback Mode)');
                 setError('Could not load the advanced AI model. Using fallback mode.');
@@ -543,19 +565,6 @@ const ScannerPage = () => {
     };
 
     const handleClassify = async () => {
-
-        const allowedMethods = [
-            'Enhanced MobileNet v2', 
-            'Advanced Text Analysis', 
-            'Hybrid Agreement', 
-            'Learning Enhanced',
-            'Improved Classification',
-            'Fallback - Vehicle Detection',
-            'Fallback - Recyclable Detection',
-            'Fallback - Safe Default',
-            'Legacy'
-        ];
-
         if (!file || !model.current || !imageRef.current) return;
         setLoading(true);
         setError('');
@@ -578,14 +587,24 @@ const ScannerPage = () => {
 
             setResult(finalResult);
 
-            // Add points and save history (Your original features)
             if (userInfo) {
                 const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
                 try {
+                    const allowedMethods = [
+                        'Enhanced MobileNet v2',
+                        'Advanced Text Analysis',
+                        'Hybrid Agreement',
+                        'Learning Enhanced',
+                        'Improved Classification',
+                        'Fallback - Vehicle Detection',
+                        'Fallback - Recyclable Detection',
+                        'Fallback - Safe Default',
+                        'Legacy'
+                    ];
 
                     const safeMethod = allowedMethods.includes(finalResult.method) 
-                    ? finalResult.method 
-                    : 'Legacy';
+                        ? finalResult.method 
+                        : 'Legacy';
 
                     const { data: updatedUser } = await api.post('/api/users/add-points', {}, config);
                     updateUser(updatedUser);
@@ -600,14 +619,7 @@ const ScannerPage = () => {
                     
                     await api.post('/api/history', historyData, config);
                 } catch (pointError) {
-                    try {
-                        await api.post('/api/history', { 
-                            item: `Classified as ${finalResult.category}`, 
-                            category: finalResult.category 
-                        }, config);
-                    } catch (fallbackError) {
-                        console.error("History logging failed:", fallbackError);
-                    }
+                    console.error("History logging error:", pointError);
                 }
             }
         } catch (err) {
@@ -622,7 +634,7 @@ const ScannerPage = () => {
         <div className="container mx-auto max-w-2xl py-8 px-4 sm:px-6 animate-fadeIn">
             <div className="text-center">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-800">Scan Your Waste</h1>
-                <p className="text-md sm:text-lg text-gray-600 mt-2">AI with Learning System - Improved Classification!</p>
+                <p className="text-md sm:text-lg text-gray-600 mt-2">AI with Learning System</p>
                 <p className={`text-sm mt-1 font-semibold ${modelStatus.includes('Ready') ? 'text-green-600' : 'text-yellow-600'}`}>
                     {modelStatus}
                 </p>
@@ -705,8 +717,10 @@ const ScannerPage = () => {
             </div>
 
             <div className="mt-6 text-center text-sm text-gray-500">
-                <p>💡 Tip: Take clear, well-lit photos for best results</p>
-                <p className="mt-1">🔍 Open browser console (F12) to see detailed classification logs</p>
+                <p>Tip: Take clear, well lit photos for best results</p>
+                {isMobileDevice() && (
+                    <p className="mt-1 text-yellow-600"> Mobile detected : Check console (F12) for detailed logs</p>
+                )}
             </div>
         </div>
     );
