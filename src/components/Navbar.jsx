@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
+import socket from '../socket.js';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getBadgeDetails, badges } from '../utils/badgeDefn'; // 1. Import badge utility
@@ -7,6 +8,28 @@ const Navbar = () => {
     const { userInfo, logout } = useAuth();
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [showNotifPanel, setShowNotifPanel] = useState(false);
+
+    useEffect(() => {
+        if (!userInfo) return;
+
+        socket.connect();
+        socket.emit('join', userInfo._id);
+
+        socket.on('reportStatusUpdated', ({ reportId, status, message }) => {
+            setNotifications(prev => [{
+                id: Date.now(),
+                message,
+                status,
+                time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+            }, ...prev].slice(0, 5)); // keep last 5
+        });
+
+        return () => {
+            socket.off('reportStatusUpdated');
+        };
+    }, [userInfo]);
 
     const handleLogout = () => {
         logout();
@@ -29,8 +52,7 @@ const Navbar = () => {
             ? "block py-2 px-4 text-sm bg-green-100 text-green-700 font-semibold"
             : "block py-2 px-4 text-sm text-gray-700 hover:bg-gray-100";
 
-    // --- NEW: Get current badge details ---
-    // const currentUserBadge = userInfo ? getBadgeDetails(userInfo.badge) : null;
+    
 
     let currentUserBadge = null;
 if (userInfo) {
@@ -57,6 +79,48 @@ if (userInfo) {
                         {userInfo && !userInfo.isAdmin && (<NavLink to="/report-issue" className={getNavLinkClass}>Report Issue</NavLink>)}
                         {userInfo && userInfo.isAdmin && (<NavLink to="/admin/dashboard" className={getNavLinkClass}>Admin Dashboard</NavLink>)}
                     </div>
+
+                    {userInfo && !userInfo.isAdmin && (
+    <div className="relative">
+        <button
+            onClick={() => setShowNotifPanel(!showNotifPanel)}
+            className="relative p-2 text-gray-600 hover:text-green-600 transition-colors"
+        >
+            🔔
+            {notifications.length > 0 && (
+                <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {notifications.length}
+                </span>
+            )}
+        </button>
+
+        {showNotifPanel && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50">
+                    <div className="flex justify-between items-center px-4 py-3 border-b">
+                        <h3 className="font-semibold text-gray-800">Report Updates</h3>
+                        <button
+                            onClick={() => { setNotifications([]); setShowNotifPanel(false); }}
+                            className="text-xs text-gray-400 hover:text-gray-600"
+                        >
+                            Clear all
+                        </button>
+                    </div>
+                    {notifications.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-6">No updates yet</p>
+                    ) : (
+                        <ul className="divide-y divide-gray-50 max-h-60 overflow-y-auto">
+                            {notifications.map(n => (
+                                <li key={n.id} className="px-4 py-3 hover:bg-gray-50">
+                                    <p className="text-sm text-gray-800">{n.message}</p>
+                                    <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            )}
+        </div>
+    )}
 
                     {/* User Info / Login Buttons (Desktop) */}
                     <div className="hidden lg:flex items-center space-x-4">

@@ -2,11 +2,33 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { badges } from '../utils/badgeDefn.js'; // 1. Import all badge definitions
+import { badges } from '../utils/badgeDefn.js'; 
+import socket from '../socket.js';  
+
+const getStatusStyle = (status) => {
+  switch (status) {
+    case 'new':         return 'bg-yellow-100 text-yellow-800';
+    case 'in progress': return 'bg-blue-100 text-blue-800';
+    case 'resolved':    return 'bg-green-100 text-green-800';
+    default:            return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const getStatusEmoji = (status) => {
+  switch (status) {
+    case 'new':         return '🟡';
+    case 'in progress': return '🔵';
+    case 'resolved':    return '✅';
+    default:            return '⚪';
+  }
+};
 
 const ProfilePage = () => {
     const [history, setHistory] = useState([]);
+    const [reports, setReports]       = useState([]);        
+    const [toast, setToast]           = useState(null); 
     const [loading, setLoading] = useState(true);
+    const [reportsLoading, setReportsLoading] = useState(true);
     const [error, setError] = useState('');
     const { userInfo } = useAuth();
 
@@ -32,6 +54,47 @@ const ProfilePage = () => {
         fetchHistory();
     }, [userInfo]);
 
+    useEffect(() => {
+        const fetchMyReports = async () => {
+            if (!userInfo) return;
+            try {
+                const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+                
+                const { data } = await api.get('/api/reports/my-reports', config);
+                setReports(data);
+            } catch (err) {
+                // silently fail — user may not have submitted any reports
+                console.log('Could not fetch reports:', err.message);
+            } finally {
+                setReportsLoading(false);
+            }
+        };
+        fetchMyReports();
+    }, [userInfo]);
+
+    useEffect(() => {
+        if (!userInfo) return;
+
+        socket.connect();
+        socket.emit('join', userInfo._id);
+
+        socket.on('reportStatusUpdated', ({ reportId, status, message }) => {
+            // Update report in local state without re-fetching
+            setReports(prev =>
+                prev.map(r => r._id === reportId ? { ...r, status } : r)
+            );
+
+            // Show toast notification
+            setToast(message);
+            setTimeout(() => setToast(null), 5000);
+        });
+
+        return () => {
+            socket.off('reportStatusUpdated');
+            socket.disconnect();
+        };
+    }, [userInfo]);
+
     const stats = history.reduce((acc, scan) => {
         acc.total = (acc.total || 0) + 1;
         acc[scan.category] = (acc[scan.category] || 0) + 1;
@@ -44,6 +107,12 @@ const ProfilePage = () => {
 
     return (
         <div className="container mx-auto py-8 px-4 sm:px-6 animate-fadeIn">
+            {toast && (
+                <div className="fixed top-20 right-4 z-50 bg-green-600 text-white px-5 py-3 rounded-xl shadow-xl flex items-center space-x-2 animate-fadeIn">
+                    <span>🔔</span>
+                    <span>{toast}</span>
+                </div>
+            )}
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800">My Impact</h1>
             <p className="text-md md:text-lg text-gray-600 mt-2">Here's a summary of your contribution!</p>
             
@@ -89,6 +158,45 @@ const ProfilePage = () => {
                         );
                     })}
                 </div>
+            </div>
+
+            <div className="mt-12">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-1">My Reported Issues</h2>
+                <p className="text-sm text-gray-500 mb-4">
+                    🔴 Status updates appear live — no refresh needed.
+                </p>
+
+                {reportsLoading ? (
+                    <p className="text-gray-500">Loading your reports...</p>
+                ) : reports.length > 0 ? (
+                    <div className="bg-white rounded-lg shadow-lg divide-y divide-gray-100">
+                        {reports.map((report) => (
+                            <div key={report._id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="flex-1">
+                                    <p className="font-medium text-gray-800">{report.description}</p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Submitted on {new Date(report.createdAt).toLocaleDateString('en-IN', {
+                                            day: 'numeric', month: 'short', year: 'numeric'
+                                        })}
+                                    </p>
+                                </div>
+                                <div className="flex items-center space-x-2 self-start sm:self-center">
+                                    <span className="text-lg">{getStatusEmoji(report.status)}</span>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusStyle(report.status)}`}>
+                                        {report.status}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center text-gray-500 p-8 bg-gray-50 rounded-lg">
+                        <p>You haven't submitted any reports yet.</p>
+                        <Link to="/report-issue" className="text-green-600 font-semibold hover:underline mt-2 inline-block">
+                            Report an Issue →
+                        </Link>
+                    </div>
+                )}
             </div>
 
             <div className="mt-12">
