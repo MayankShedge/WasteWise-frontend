@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext';
+import socket from '../socket.js';
 
 const ManageReports = () => {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [emailStatus, setEmailStatus] = useState('');
+    const [liveAlert, setLiveAlert] = useState(null);   // 👈 new
     const { userInfo } = useAuth();
 
     const fetchReports = useCallback(async () => {
@@ -15,7 +17,7 @@ const ManageReports = () => {
             const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
             const { data } = await api.get('/api/reports', config);
             setReports(data);
-        } catch (err) { // --- THE '_blank' HAS BEEN REMOVED FROM THIS LINE ---
+        } catch (err) {
             setError('Failed to load reports.');
         } finally {
             if (loading) setLoading(false);
@@ -25,6 +27,21 @@ const ManageReports = () => {
     useEffect(() => {
         fetchReports();
     }, [fetchReports]);
+
+    // 👇 Live: when a new report comes in, auto-add it to the table
+    useEffect(() => {
+        if (!userInfo?.isAdmin) return;
+
+        socket.on('newReportSubmitted', (newReport) => {
+            setReports(prev => [newReport, ...prev]);
+            setLiveAlert(`🆕 New report just submitted by ${newReport.user?.name || 'a user'}!`);
+            setTimeout(() => setLiveAlert(null), 5000);
+        });
+
+        return () => {
+            socket.off('newReportSubmitted');
+        };
+    }, [userInfo]);
 
     const handleDelete = async (reportId) => {
         if (window.confirm('Are you sure you want to delete this report?')) {
@@ -47,7 +64,7 @@ const ManageReports = () => {
             alert('Failed to update status.');
         }
     };
-    
+
     const handleEmailReport = async () => {
         setEmailStatus('Sending...');
         try {
@@ -61,19 +78,34 @@ const ManageReports = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'new': return 'bg-yellow-100 text-yellow-800';
+            case 'new':         return 'bg-yellow-100 text-yellow-800';
             case 'in progress': return 'bg-blue-100 text-blue-800';
-            case 'resolved': return 'bg-green-100 text-green-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'resolved':    return 'bg-green-100 text-green-800';
+            default:            return 'bg-gray-100 text-gray-800';
         }
     };
 
     if (loading) return <p>Loading reports...</p>;
 
     return (
-        // --- RESPONSIVE CHANGES APPLIED ---
         <div className="animate-fadeIn">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">Community Reports</h2>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Community Reports</h2>
+
+                {/* Live indicator dot */}
+                <span className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse inline-block"></span>
+                    Live
+                </span>
+            </div>
+
+            {/* Live alert banner — appears when a new report comes in */}
+            {liveAlert && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm font-medium animate-fadeIn">
+                    {liveAlert}
+                </div>
+            )}
+
             <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
                 <button
                     onClick={handleEmailReport}
@@ -99,7 +131,7 @@ const ManageReports = () => {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {reports.length > 0 ? reports.map((report) => (
-                                    <tr key={report._id}>
+                                    <tr key={report._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-4 sm:px-6 py-4 whitespace-normal text-xs sm:text-sm text-gray-700">{report.description}</td>
                                         <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700">{report.user ? report.user.name : 'N/A'}</td>
                                         <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
@@ -135,4 +167,3 @@ const ManageReports = () => {
 };
 
 export default ManageReports;
-
