@@ -72,7 +72,7 @@ const RegisterPage = () => {
                                 shape="rectangular"
                                 theme="outline"
                                 size="large"
-                                width="368"
+                                width={window.innerWidth < 640 ? 300 : 368}
                             />
                         </div>
 
