@@ -70,6 +70,7 @@ const AdminDashboard = () => {
                 <NavLink to="/admin/dashboard/schedules" className={getTabClass}>Manage Schedules</NavLink>
                 <NavLink to="/admin/dashboard/analytics" className={getTabClass}>View Analytics</NavLink>
                 <NavLink to="/admin/dashboard/articles" className={getTabClass}>Manage Articles</NavLink>
+                <NavLink to="/admin/dashboard/locations" className={getTabClass}>Manage Locations</NavLink>
             </div>
 
             <main>

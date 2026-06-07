@@ -6,7 +6,6 @@ import 'leaflet/dist/leaflet.css';
 import App from './App.jsx';
 import './index.css';
 
-// Import all components and pages
 import AdminRoute from './components/AdminRoute.jsx';
 import PrivateRoute from './components/PrivateRoute.jsx';
 import ManageReports from './components/ManageReports.jsx';
@@ -27,6 +26,7 @@ import ArticlesPage from './pages/Articles.jsx';
 import ArticleDetailPage from './pages/ArticleDetail.jsx';
 import ForgotPasswordPage from './pages/forgotPage.jsx'; 
 import ResetPasswordPage from './pages/resetPage.jsx';
+import ManageLocations from './components/ManageLocations.jsx';
 
 import { AuthProvider } from './context/AuthContext.jsx';
 
@@ -70,7 +70,8 @@ const router = createBrowserRouter([
                { path: 'reports', element: <ManageReports /> },
                { path: 'schedules', element: <ManageSchedules /> },
                { path: 'analytics', element: <AdminAnalyticsPage /> },
-               { path: 'articles', element: <ManageArticles /> }
+               { path: 'articles', element: <ManageArticles /> },
+               { path: 'locations', element: <ManageLocations /> }
             ]
           }
         ]
